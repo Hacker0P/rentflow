@@ -1,0 +1,52 @@
+services:
+  # 1. NestJS Backend API
+  - type: web
+    name: rentflow-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma db push && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rentflow-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+  # 2. Next.js Frontend
+  - type: web
+    name: rentflow-frontend
+    runtime: node
+    rootDir: frontend
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: rentflow-backend
+          property: host
+          envVarKey: NEXT_PUBLIC_API_URL
+
+databases:
+  # Managed PostgreSQL Database
+  - name: rentflow-postgres
+    plan: free
+    region: oregon
+    databaseName: rentflow
+    user: postgres
