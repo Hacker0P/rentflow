@@ -1,18 +1,23 @@
-const CACHE_NAME = 'rentflow-v1';
+const CACHE_NAME = 'rentflow-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon.png',
   '/apple-touch-icon.png'
 ];
 
-// Install Event - Pre-cache core app shell assets
+// Install Event - Pre-cache core app shell assets safely
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const asset of STATIC_ASSETS) {
+        try {
+          await cache.add(asset);
+        } catch (err) {
+          // Skip if individual asset fails so SW still installs
+        }
+      }
     }).then(() => self.skipWaiting())
   );
 });

@@ -1,30 +1,43 @@
 {
   "name": "RentFlow - Rental & Property Management",
   "short_name": "RentFlow",
-  "description": "Effortless rent collection, UPI receipts, and repair tickets for landlords and tenants.",
+  "description": "India's smartest property management and 0% gateway fee UPI rent collection platform.",
   "start_url": "/",
+  "scope": "/",
   "id": "/",
   "display": "standalone",
-  "background_color": "#090d16",
+  "background_color": "#ffffff",
   "theme_color": "#059669",
   "orientation": "portrait-primary",
-  "categories": ["finance", "productivity", "business"],
+  "categories": ["finance", "productivity", "business", "utilities"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/icon.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png"
     }
   ]

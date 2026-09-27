@@ -15,6 +15,8 @@ import {
   ShieldCheck,
   Building,
   Users,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import { NotificationBell } from './notification-bell';
 import { getStoredUser, clearAuthToken } from '@/lib/api';
@@ -197,6 +199,28 @@ export function LandlordMobileHeader({
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
               </Link>
             </div>
+
+            {/* Install App on Phone Button */}
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('rentflow-trigger-pwa-install'));
+                }
+              }}
+              className="w-full py-2.5 px-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 text-emerald-800 font-bold text-xs border border-emerald-200/80 flex items-center justify-between transition active:scale-95"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <span className="block font-bold text-slate-900 leading-tight">Install Mobile App</span>
+                  <span className="text-[10px] text-emerald-700 font-medium">Add to Home Screen</span>
+                </div>
+              </div>
+              <Download className="w-4 h-4 text-emerald-600" />
+            </button>
 
             {/* Sign Out Button */}
             <button

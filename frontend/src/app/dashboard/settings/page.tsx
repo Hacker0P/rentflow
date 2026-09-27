@@ -21,6 +21,8 @@ import {
   Trash2,
   Image as ImageIcon,
   Check,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 
 interface ProfileData {
@@ -579,6 +581,48 @@ export default function SettingsPage() {
                 className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-100 text-sm font-medium text-slate-500 cursor-not-allowed"
               />
             </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* Section 5: Mobile App & PWA                                               */}
+        {/* ========================================================================= */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 rounded-3xl border border-emerald-500/20 text-white p-6 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/30 shrink-0">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-extrabold text-white">RentFlow Mobile App (PWA)</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
+                    Instant Install
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                  Install RentFlow on your Android phone or iPhone home screen. Launches fullscreen with fast performance and <strong>no browser URL address bar</strong>.
+                </p>
+                <div className="flex items-center gap-4 pt-1 text-[11px] text-emerald-400 font-medium">
+                  <span>✓ 1-Tap Home Screen Access</span>
+                  <span>✓ Fullscreen Native Feel</span>
+                  <span>✓ Works on Android &amp; iOS</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new Event('rentflow-trigger-pwa-install'));
+                }
+              }}
+              className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Install RentFlow App</span>
+            </button>
           </div>
         </div>
 
