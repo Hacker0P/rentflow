@@ -8,14 +8,13 @@ import {
   LogOut,
   Wrench,
   CreditCard,
-  Sparkles,
-  Home,
   User,
   X,
   ArrowRight,
+  Settings,
 } from 'lucide-react';
 import { NotificationBell } from './notification-bell';
-import { getStoredUser, clearAuthToken, apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
+import { getStoredUser, clearAuthToken } from '@/lib/api';
 
 interface LandlordMobileHeaderProps {
   viewMode: 'APP' | 'DESKTOP';
@@ -29,7 +28,6 @@ export function LandlordMobileHeader({
   const router = useRouter();
   const [user, setUser] = useState<any | null>(null);
   const [showMenu, setShowMenu] = useState(false);
-  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     setUser(getStoredUser());
@@ -39,31 +37,6 @@ export function LandlordMobileHeader({
     clearAuthToken();
     router.push('/login');
   };
-
-  const handleSwitchToTenantDemo = async () => {
-    try {
-      setSwitching(true);
-      const res = await apiRequest<{ accessToken: string; user: any }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: 'amit.kumar@example.com',
-          password: 'Password123!',
-        }),
-      });
-      if (res.data) {
-        setAuthToken(res.data.accessToken);
-        setStoredUser(res.data.user);
-        setShowMenu(false);
-        router.push('/tenant');
-      }
-    } catch (err) {
-      console.error('Failed to switch to tenant demo:', err);
-    } finally {
-      setSwitching(false);
-    }
-  };
-
-  const isDemo = user?.email === 'rahul.sharma@example.com';
 
   return (
     <>
@@ -75,16 +48,9 @@ export function LandlordMobileHeader({
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-white text-base tracking-tight leading-none">
-                  RentFlow
-                </span>
-                {isDemo && (
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-black uppercase tracking-wider">
-                    Demo
-                  </span>
-                )}
-              </div>
+              <span className="font-extrabold text-white text-base tracking-tight leading-none block">
+                RentFlow
+              </span>
               <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mt-0.5">
                 Landlord Portal
               </span>
@@ -93,18 +59,6 @@ export function LandlordMobileHeader({
 
           {/* Quick Actions & Profile */}
           <div className="flex items-center gap-2">
-            {/* Quick Demo Switcher Pill on Mobile */}
-            {isDemo && (
-              <button
-                onClick={handleSwitchToTenantDemo}
-                disabled={switching}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[10px] font-bold active:scale-95 transition"
-              >
-                <Home className="w-3 h-3" />
-                <span>Tenant App</span>
-              </button>
-            )}
-
             {/* Notification Bell */}
             <NotificationBell variant="dark" />
 
@@ -161,28 +115,6 @@ export function LandlordMobileHeader({
               </button>
             </div>
 
-            {/* Demo Switch Action */}
-            {isDemo && (
-              <div className="p-3.5 rounded-2xl bg-teal-950/40 border border-teal-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-teal-300">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Interactive Quick Demo</span>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-snug">
-                  Switch immediately to Amit Kumar&apos;s mobile tenant view to test UPI payments and HRA receipts.
-                </p>
-                <button
-                  onClick={handleSwitchToTenantDemo}
-                  disabled={switching}
-                  className="w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 disabled:opacity-50"
-                >
-                  <Home className="w-3.5 h-3.5" />
-                  <span>{switching ? 'Opening Tenant App...' : 'Switch to Amit (Tenant App)'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
             {/* Quick Links */}
             <div className="space-y-1 text-xs font-semibold text-slate-300">
               <Link
@@ -190,7 +122,10 @@ export function LandlordMobileHeader({
                 onClick={() => setShowMenu(false)}
                 className="w-full p-3 rounded-xl hover:bg-slate-800/80 flex items-center justify-between transition"
               >
-                <span>Payout & UPI Settings</span>
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-emerald-400" />
+                  <span>Payout & UPI Settings</span>
+                </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
               </Link>
               <Link
@@ -198,7 +133,21 @@ export function LandlordMobileHeader({
                 onClick={() => setShowMenu(false)}
                 className="w-full p-3 rounded-xl hover:bg-slate-800/80 flex items-center justify-between transition"
               >
-                <span>Repair Ticket Desk</span>
+                <div className="flex items-center gap-2.5">
+                  <Wrench className="w-4 h-4 text-amber-400" />
+                  <span>Repair Ticket Desk</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+              </Link>
+              <Link
+                href="/dashboard/payments"
+                onClick={() => setShowMenu(false)}
+                className="w-full p-3 rounded-xl hover:bg-slate-800/80 flex items-center justify-between transition"
+              >
+                <div className="flex items-center gap-2.5">
+                  <CreditCard className="w-4 h-4 text-teal-400" />
+                  <span>Payments & Invoices</span>
+                </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
               </Link>
             </div>

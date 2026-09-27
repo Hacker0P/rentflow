@@ -21,7 +21,7 @@ import {
   CreditCard,
   Send,
 } from 'lucide-react';
-import { apiRequest, getStoredUser, setAuthToken, setStoredUser } from '@/lib/api';
+import { apiRequest, getStoredUser } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WhatsAppModal, WhatsAppReminderData } from '@/components/whatsapp-modal';
@@ -72,7 +72,6 @@ export default function DashboardPage() {
   const [generateMsg, setGenerateMsg] = useState<string | null>(null);
   const [whatsAppModalData, setWhatsAppModalData] = useState<WhatsAppReminderData | null>(null);
   const [user, setUser] = useState<any | null>(null);
-  const [switchingDemo, setSwitchingDemo] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
@@ -108,28 +107,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSwitchToTenantDemo = async () => {
-    try {
-      setSwitchingDemo(true);
-      const res = await apiRequest<{ accessToken: string; user: any }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: 'amit.kumar@example.com',
-          password: 'Password123!',
-        }),
-      });
-      if (res.data) {
-        setAuthToken(res.data.accessToken);
-        setStoredUser(res.data.user);
-        router.push('/tenant');
-      }
-    } catch (err) {
-      console.error('Switch to tenant demo failed:', err);
-    } finally {
-      setSwitchingDemo(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -148,7 +125,6 @@ export default function DashboardPage() {
     upcomingInvoices: [],
   };
 
-  const isDemoAccount = user?.email === 'rahul.sharma@example.com';
   const collectionPct =
     financials.expectedCollection > 0
       ? Math.min(100, Math.round((financials.collectedAmount / financials.expectedCollection) * 100))
@@ -156,36 +132,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-6">
-      {/* 1. Quick Demo Switcher Bar (Visible for Demo Evaluators) */}
-      {isDemoAccount && (
-        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/30 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-black block leading-tight text-emerald-300">
-                Live Demo: Rahul Sharma (Landlord)
-              </span>
-              <span className="text-[11px] text-slate-400 font-medium">
-                Testing pre-seeded properties (Green Acres & Sunshine Heights)
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSwitchToTenantDemo}
-            disabled={switchingDemo}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-95 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-teal-950/40 shrink-0"
-          >
-            <Home className="w-3.5 h-3.5" />
-            <span>{switchingDemo ? 'Opening Tenant App...' : 'Switch to Tenant Demo (Amit)'}</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-
-      {/* 2. Top Header & Action Banner */}
+      {/* 1. Top Header & Action Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-700">
         <div>
           <div className="flex items-center gap-2">
