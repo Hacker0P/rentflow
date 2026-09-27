@@ -99,6 +99,7 @@ export default function TenantHomePage() {
   const [submittingReport, setSubmittingReport] = useState(false);
   const [reportSuccess, setReportSuccess] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [qrError, setQrError] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -452,13 +453,18 @@ export default function TenantHomePage() {
                   <div className="p-3 bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={qrCodeUrl}
+                      src={
+                        qrError && upiUrl
+                          ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}`
+                          : qrCodeUrl
+                      }
                       alt="UPI QR Code"
                       width={180}
                       height={180}
                       className="rounded-xl object-contain max-h-[200px]"
+                      onError={() => setQrError(true)}
                     />
-                    {(landlord.qrImageUrl || localQr) && (
+                    {!qrError && (landlord.qrImageUrl || localQr) && (
                       <span className="mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Payment QR
                       </span>

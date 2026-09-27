@@ -74,6 +74,7 @@ export default function TenantInvoicePaymentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [qrError, setQrError] = useState(false);
 
   useEffect(() => {
     async function fetchInvoice() {
@@ -319,13 +320,18 @@ export default function TenantInvoicePaymentPage() {
                 <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-emerald-200/80 shadow-sm">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={qrCodeUrl}
+                    src={
+                      qrError && upiIntent
+                        ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiIntent)}`
+                        : qrCodeUrl
+                    }
                     alt="UPI Payment QR Code"
                     width={200}
                     height={200}
                     className="rounded-xl border border-slate-100 shadow-inner object-contain max-h-[220px]"
+                    onError={() => setQrError(true)}
                   />
-                  {invoice.landlord.qrImageUrl && (
+                  {!qrError && invoice.landlord.qrImageUrl && (
                     <span className="mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Payment QR
                     </span>

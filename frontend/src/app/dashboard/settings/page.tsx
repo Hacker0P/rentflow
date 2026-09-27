@@ -54,6 +54,7 @@ export default function SettingsPage() {
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankIfsc, setBankIfsc] = useState('');
   const [qrImageUrl, setQrImageUrl] = useState('');
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -72,8 +73,21 @@ export default function SettingsPage() {
         setBankName(res.data.bankName || '');
         setBankAccountNumber(res.data.bankAccountNumber || '');
         setBankIfsc(res.data.bankIfsc || '');
-        const localQr = typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null;
-        setQrImageUrl(res.data.qrImageUrl || localQr || '');
+        
+        // Ensure image URL is valid and discard any dummy test strings
+        const rawQr = res.data.qrImageUrl || (typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null);
+        if (
+          rawQr &&
+          (rawQr.startsWith('data:image/') || rawQr.startsWith('http://') || rawQr.startsWith('https://')) &&
+          !rawQr.includes('TEST_QR_PHOTO')
+        ) {
+          setQrImageUrl(rawQr);
+          setImageError(false);
+        } else {
+          setQrImageUrl('');
+          setImageError(false);
+          if (typeof window !== 'undefined') localStorage.removeItem('rentflow_landlord_qr');
+        }
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to load profile details');
@@ -120,6 +134,7 @@ export default function SettingsPage() {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
           setQrImageUrl(compressedDataUrl);
+          setImageError(false);
           if (typeof window !== 'undefined') {
             localStorage.setItem('rentflow_landlord_qr', compressedDataUrl);
           }
@@ -133,6 +148,7 @@ export default function SettingsPage() {
 
   const handleRemoveQrImage = () => {
     setQrImageUrl('');
+    setImageError(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('rentflow_landlord_qr');
     }
@@ -321,7 +337,7 @@ export default function SettingsPage() {
                     <Camera className="w-4 h-4 text-emerald-600" />
                     <span>Upload Your Own Payment QR Photo</span>
                   </span>
-                  {qrImageUrl && (
+                  {!imageError && qrImageUrl && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                       Custom QR Active
                     </span>
@@ -347,10 +363,10 @@ export default function SettingsPage() {
                     className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-md shadow-emerald-950/20 transition text-center"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>{qrImageUrl ? 'Change QR Photo' : 'Upload QR from Photos / Camera'}</span>
+                    <span>{!imageError && qrImageUrl ? 'Change QR Photo' : 'Upload QR from Photos / Camera'}</span>
                   </label>
 
-                  {qrImageUrl && (
+                  {!imageError && qrImageUrl && (
                     <button
                       type="button"
                       onClick={handleRemoveQrImage}
@@ -373,9 +389,12 @@ export default function SettingsPage() {
               <div className="w-40 h-40 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={qrImageUrl || sampleQrUrl}
+                  src={!imageError && qrImageUrl ? qrImageUrl : sampleQrUrl}
                   alt="Tenant Payment QR Code"
                   className="w-full h-full object-contain rounded-xl"
+                  onError={() => {
+                    setImageError(true);
+                  }}
                 />
               </div>
 
@@ -384,7 +403,7 @@ export default function SettingsPage() {
                   {name || 'Landlord Name'}
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block truncate max-w-[190px] border bg-emerald-50 text-emerald-800 border-emerald-200">
-                  {qrImageUrl ? 'Photo QR Active' : upiId || 'upi-id@bank'}
+                  {!imageError && qrImageUrl ? 'Photo QR Active' : (upiId || 'upi-id@bank')}
                 </span>
               </div>
             </div>
