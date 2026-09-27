@@ -62,7 +62,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
 
   const navItems = [
     { label: 'Home & Pay', href: '/tenant', icon: Home },
-    { label: 'Receipts & HRA', href: '/tenant/receipts', icon: Receipt },
+    { label: 'Payment History', href: '/tenant/receipts', icon: Receipt },
     { label: 'Repairs & Support', href: '/tenant/maintenance', icon: Wrench },
   ];
 
@@ -192,8 +192,8 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
                     <Receipt className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Receipts & HRA Claims</span>
-                    <span className="text-[10px] text-slate-400">Tax declaration certificates</span>
+                    <span className="text-xs font-bold text-slate-800 block">Payment History & Receipts</span>
+                    <span className="text-[10px] text-slate-400">Track monthly bills & receipts</span>
                   </div>
                 </div>
                 <ChevronDown className="w-4 h-4 -rotate-90 text-slate-400 group-hover:text-slate-600" />

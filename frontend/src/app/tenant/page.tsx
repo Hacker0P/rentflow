@@ -332,8 +332,8 @@ export default function TenantHomePage() {
             <Receipt className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-xs font-bold text-slate-800 block truncate">HRA Receipts</span>
-            <span className="text-[10px] text-slate-400 block truncate">Tax exemption proof</span>
+            <span className="text-xs font-bold text-slate-800 block truncate">Payment History</span>
+            <span className="text-[10px] text-slate-400 block truncate">Monthly bills & receipts</span>
           </div>
         </Link>
 

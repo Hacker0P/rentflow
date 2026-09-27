@@ -534,7 +534,7 @@ export default function TenantInvoicePaymentPage() {
               </div>
               <h3 className="text-lg font-bold text-emerald-900">Thank You! Payment Received</h3>
               <p className="text-xs text-emerald-700 mt-1">
-                This invoice has been settled in full. Keep this document as your verified rent receipt for tax (HRA) declaration.
+                This invoice has been settled in full. Keep this document as your verified rent receipt.
               </p>
             </div>
           )}
