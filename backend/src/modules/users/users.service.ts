@@ -12,6 +12,42 @@ export class UsersService {
     });
   }
 
+  async findByEmailOrPhone(identifier: string): Promise<User | null> {
+    const clean = identifier.trim().toLowerCase();
+    const digitsOnly = clean.replace(/[^0-9]/g, '');
+
+    // 1. Direct email match
+    let user = await this.prisma.user.findUnique({
+      where: { email: clean },
+    });
+    if (user) return user;
+
+    // 2. If it has at least 10 digits, match on phone
+    if (digitsOnly.length >= 10) {
+      const last10 = digitsOnly.slice(-10);
+      user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { phone: { contains: last10 } },
+            { email: { startsWith: last10 } },
+          ],
+        },
+      });
+      if (user) return user;
+
+      // Check tenant table for linked user
+      const tenant = await this.prisma.tenant.findFirst({
+        where: {
+          phone: { contains: last10 },
+        },
+        include: { user: true },
+      });
+      if (tenant?.user) return tenant.user;
+    }
+
+    return null;
+  }
+
   async findById(id: string): Promise<Omit<User, 'passwordHash'> | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -23,12 +59,13 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  async create(data: { name: string; email: string; passwordHash: string }): Promise<User> {
+  async create(data: { name: string; email: string; passwordHash: string; phone?: string }): Promise<User> {
     return this.prisma.user.create({
       data: {
         name: data.name.trim(),
         email: data.email.toLowerCase().trim(),
         passwordHash: data.passwordHash,
+        phone: data.phone?.trim() || null,
       },
     });
   }

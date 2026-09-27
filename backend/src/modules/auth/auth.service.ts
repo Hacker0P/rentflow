@@ -24,6 +24,7 @@ export class AuthService {
     const user = await this.usersService.create({
       name: dto.name,
       email: dto.email,
+      phone: dto.phone,
       passwordHash,
     });
 
@@ -36,6 +37,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         createdAt: user.createdAt,
       },
@@ -43,9 +45,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findByEmailOrPhone(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid phone/email or password');
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);

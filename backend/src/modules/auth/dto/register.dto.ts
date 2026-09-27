@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class RegisterDto {
@@ -17,4 +17,9 @@ export class RegisterDto {
   @MinLength(6, { message: 'Password must be at least 6 characters long' })
   @MaxLength(50, { message: 'Password cannot exceed 50 characters' })
   password: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
+
