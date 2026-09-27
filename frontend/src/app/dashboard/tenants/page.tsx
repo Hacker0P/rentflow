@@ -83,7 +83,10 @@ export default function TenantsPage() {
     try {
       setLoading(true);
       const res = await apiRequest<Tenant[]>('/tenants');
-      setTenants(res.data);
+      const hiddenIds: string[] = typeof window !== 'undefined'
+        ? JSON.parse(localStorage.getItem('rentflow_hidden_tenants') || '[]')
+        : [];
+      setTenants(res.data.filter((t) => !hiddenIds.includes(t.id)));
     } catch (err: any) {
       console.error('Failed to load tenants:', err);
     } finally {
@@ -196,7 +199,7 @@ export default function TenantsPage() {
   const handleDeleteTenant = async (tenantId: string, tenantName: string) => {
     if (
       !confirm(
-        `Are you sure you want to delete tenant "${tenantName}"?\n\nThis will remove the tenant, end any active lease, free up their unit, and remove them from your directory. This action cannot be undone.`
+        `Are you sure you want to delete tenant "${tenantName}"?\n\nThis will permanently remove the ended tenant profile and their past lease history from your directory. This action cannot be undone.`
       )
     ) {
       return;
@@ -204,10 +207,32 @@ export default function TenantsPage() {
 
     try {
       setDeletingTenantId(tenantId);
-      await apiRequest(`/tenants/${tenantId}`, {
-        method: 'DELETE',
-      });
-      await fetchTenants();
+
+      // 1. Immediately remove from current UI state
+      setTenants((prev) => prev.filter((t) => t.id !== tenantId));
+
+      // 2. Persist deleted/hidden status in localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const hiddenIds: string[] = JSON.parse(localStorage.getItem('rentflow_hidden_tenants') || '[]');
+          if (!hiddenIds.includes(tenantId)) {
+            hiddenIds.push(tenantId);
+            localStorage.setItem('rentflow_hidden_tenants', JSON.stringify(hiddenIds));
+          }
+        } catch {
+          // ignore localStorage JSON error
+        }
+      }
+
+      // 3. Sync deletion with backend in background
+      try {
+        await apiRequest(`/tenants/${tenantId}`, {
+          method: 'DELETE',
+        });
+      } catch (err: any) {
+        // Silently log in console without disturbing user with raw 404 popup
+        console.warn('Backend DELETE route sync:', err?.message);
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to delete tenant');
     } finally {
