@@ -1,5 +1,6 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, IsOptional, IsEnum } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { UserRole } from '@prisma/client';
 
 export class RegisterDto {
   @IsString()
@@ -21,5 +22,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   phone?: string;
-}
 
+  @IsOptional()
+  @IsEnum(UserRole, { message: 'Role must be either LANDLORD or TENANT' })
+  role?: UserRole;
+}

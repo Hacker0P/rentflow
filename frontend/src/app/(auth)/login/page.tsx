@@ -422,14 +422,14 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Landlord Registration Link */}
+          {/* Registration Link */}
           <div className="text-center pt-1 text-xs">
-            <span className="text-slate-500">New landlord? </span>
+            <span className="text-slate-500">Don&apos;t have an account? </span>
             <Link
               href="/register"
               className="font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
             >
-              Create Account Free
+              Sign Up Free (Landlord or Tenant)
             </Link>
           </div>
         </div>

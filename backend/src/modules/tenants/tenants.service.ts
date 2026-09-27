@@ -14,6 +14,16 @@ export class TenantsService {
     const normalizedPhone = dto.phone.trim();
     const normalizedEmail = dto.email ? dto.email.trim().toLowerCase() : null;
 
+    const last10 = normalizedPhone.replace(/[^0-9]/g, '').slice(-10);
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(last10.length >= 10 ? [{ phone: { contains: last10 } }] : []),
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
+      },
+    });
+
     // Check if tenant with this phone already exists to avoid duplicate profiles
     const existing = await this.prisma.tenant.findFirst({
       where: { phone: normalizedPhone },
@@ -26,6 +36,7 @@ export class TenantsService {
         data: {
           name: dto.name.trim(),
           email: normalizedEmail || existing.email,
+          ...(existingUser && !existing.userId ? { userId: existingUser.id } : {}),
         },
       });
     }
@@ -35,6 +46,7 @@ export class TenantsService {
         name: dto.name.trim(),
         phone: normalizedPhone,
         email: normalizedEmail,
+        ...(existingUser ? { userId: existingUser.id } : {}),
       },
     });
   }

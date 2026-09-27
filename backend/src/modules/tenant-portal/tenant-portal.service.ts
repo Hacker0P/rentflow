@@ -13,7 +13,7 @@ export class TenantPortalService {
 
 
   async getDashboard(userId: string) {
-    const tenant = await this.prisma.tenant.findUnique({
+    let tenant = await this.prisma.tenant.findUnique({
       where: { userId },
       include: {
         leases: {
@@ -55,6 +55,49 @@ export class TenantPortalService {
     });
 
     if (!tenant) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user) {
+        const cleanPhone = user.phone ? user.phone.replace(/[^0-9]/g, '') : '';
+        const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : '';
+
+        const matchingTenant = await this.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              ...(last10 ? [{ phone: { contains: last10 } }] : []),
+              { email: user.email },
+            ],
+            userId: null,
+          },
+        });
+
+        if (matchingTenant) {
+          await this.prisma.tenant.update({
+            where: { id: matchingTenant.id },
+            data: { userId: user.id },
+          });
+
+          return this.getDashboard(userId);
+        }
+
+        return {
+          hasActiveLease: false,
+          tenant: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone || '',
+          },
+          unit: null,
+          property: null,
+          landlord: null,
+          lease: null,
+          currentBill: null,
+          upiUrl: null,
+          invoices: [],
+          message: 'No active lease agreement found under your profile.',
+        };
+      }
+
       throw new NotFoundException('Tenant profile not found for this account.');
     }
 

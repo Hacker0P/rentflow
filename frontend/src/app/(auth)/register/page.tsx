@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronDown,
@@ -12,14 +12,22 @@ import {
   Eye,
   EyeOff,
   Building2,
+  Home,
   Sparkles,
   ArrowLeft,
   ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Role: 'LANDLORD' | 'TENANT'
+  const initialRole = searchParams.get('role')?.toUpperCase() === 'TENANT' ? 'TENANT' : 'LANDLORD';
+  const [role, setRole] = useState<'LANDLORD' | 'TENANT'>(initialRole);
 
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -30,6 +38,13 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const roleParam = searchParams.get('role')?.toUpperCase();
+    if (roleParam === 'TENANT' || roleParam === 'LANDLORD') {
+      setRole(roleParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +80,7 @@ export default function RegisterPage() {
           email: email.trim().toLowerCase(),
           password,
           phone: phoneNumber.trim() ? `+91${phoneNumber.replace(/[^0-9]/g, '').slice(-10)}` : undefined,
+          role,
         }),
       });
 
@@ -83,7 +99,11 @@ export default function RegisterPage() {
         );
       }
 
-      router.push('/dashboard');
+      if (res.data.user?.role === 'TENANT') {
+        router.push('/tenant');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Registration failed. An account with this email or phone may already exist.');
     } finally {
@@ -117,41 +137,41 @@ export default function RegisterPage() {
       </header>
 
       {/* ========================================================================= */}
-      {/* 1. Top Visual Hero Banner (Zomato/Blinkit High-Impact Graphic Style)       */}
+      {/* 1. Top Visual Hero Banner (Dynamic based on selected role)                */}
       {/* ========================================================================= */}
-      <div className="relative w-full max-w-md mx-auto pt-6 pb-5 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
+      <div className="relative w-full max-w-md mx-auto pt-5 pb-4 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
         {/* Ambient Glows */}
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-emerald-500/25 via-teal-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         {/* Big Bold Headline */}
         <div className="space-y-1 relative z-10">
           <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
-            Start Managing Rent
+            {role === 'LANDLORD' ? 'Start Managing Rent' : 'Pay & Track Rent'}
           </h1>
           <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-emerald-400 leading-tight">
-            In 60 Seconds
+            {role === 'LANDLORD' ? 'In 60 Seconds' : 'Instantly on UPI'}
           </h2>
         </div>
 
-        {/* Angled Tent Card Badge ("DIRECT UPI MODE") */}
-        <div className="mt-5 mb-1 relative z-10 flex flex-col items-center">
+        {/* Angled Tent Card Badge */}
+        <div className="mt-4 mb-1 relative z-10 flex flex-col items-center">
           <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/20 border-2 border-emerald-500/40 -rotate-3 hover:rotate-0 transition-transform duration-300 flex items-center gap-2">
             <div className="w-5 h-5 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-[10px]">
               ₹
             </div>
             <div className="text-left">
               <span className="text-[11px] font-black uppercase tracking-wider block text-emerald-800 leading-none">
-                100% Free Setup
+                {role === 'LANDLORD' ? '100% Free Setup' : 'Direct UPI Mode'}
               </span>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mt-0.5">
-                Zero Platform Commission
+                {role === 'LANDLORD' ? 'Zero Platform Commission' : '0% Gateway Fees'}
               </span>
             </div>
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-1" />
           </div>
 
           {/* Visual Carousel Indicator Dots */}
-          <div className="flex items-center gap-1.5 mt-4">
+          <div className="flex items-center gap-1.5 mt-3.5">
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
             <span className="w-4 h-1.5 rounded-full bg-emerald-400 transition-all shadow-xs shadow-emerald-400/50" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
@@ -164,19 +184,56 @@ export default function RegisterPage() {
       {/* ========================================================================= */}
       {/* 2. White Bottom Sheet Card (The Core Requested Interface)                 */}
       {/* ========================================================================= */}
-      <div className="w-full max-w-md mx-auto bg-white rounded-t-[36px] sm:rounded-3xl shadow-2xl p-6 sm:p-8 pt-6 text-slate-900 border-t border-slate-100 flex-1 flex flex-col justify-between">
+      <div className="w-full max-w-md mx-auto bg-white rounded-t-[36px] sm:rounded-3xl shadow-2xl p-6 sm:p-8 pt-5 text-slate-900 border-t border-slate-100 flex-1 flex flex-col justify-between">
         <div className="space-y-4">
-          {/* Section A: Header title */}
+          {/* Section A: Role Selector Switch (Landlord vs Tenant) */}
+          <div className="space-y-2">
+            <span className="text-xs font-bold text-slate-500 text-center block tracking-tight">
+              Select your account type
+            </span>
+
+            <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setRole('LANDLORD')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+                  role === 'LANDLORD'
+                    ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80 font-extrabold scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Building2 className={`w-4 h-4 ${role === 'LANDLORD' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>Landlord / Owner</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole('TENANT')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${
+                  role === 'TENANT'
+                    ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80 font-extrabold scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <Home className={`w-4 h-4 ${role === 'TENANT' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>Tenant / Renter</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section B: Dynamic Subheader Context */}
           <div className="text-center space-y-1">
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold">
               <Sparkles className="w-3 h-3 text-emerald-600" />
-              <span>Free Landlord Setup</span>
+              <span>{role === 'LANDLORD' ? 'Free Landlord Setup' : 'Instant Tenant Access'}</span>
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Create Landlord Account
+              {role === 'LANDLORD' ? 'Create Landlord Account' : 'Create Tenant Account'}
             </h2>
             <p className="text-xs text-slate-500">
-              Collect rent directly on UPI with instant WhatsApp receipts
+              {role === 'LANDLORD'
+                ? 'Collect rent directly on UPI with instant WhatsApp receipts'
+                : 'Pay rent via UPI, download official rent receipts & log repair tickets'}
             </p>
           </div>
 
@@ -188,7 +245,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Section B: Signup Form */}
+          {/* Section C: Signup Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Full Name */}
             <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
@@ -198,7 +255,7 @@ export default function RegisterPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Full Name (e.g. Rahul Sharma)"
+                placeholder={role === 'LANDLORD' ? 'Landlord Name (e.g. Rahul Sharma)' : 'Tenant Name (e.g. Priya Verma)'}
                 className="w-full text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none bg-transparent"
               />
             </div>
@@ -274,7 +331,7 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            {/* Primary Action Button ("Create Free Account") */}
+            {/* Primary Action Button */}
             <button
               type="submit"
               disabled={loading}
@@ -284,7 +341,7 @@ export default function RegisterPage() {
                 <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <span className="flex items-center gap-1.5">
-                  <span>Create Free Account</span>
+                  <span>{role === 'LANDLORD' ? 'Create Landlord Account' : 'Create Tenant Account'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </span>
               )}
@@ -296,7 +353,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => {
-                setError('Google Sign-Up is enabled. Fill in your details above for instant zero-fee account setup.');
+                setError('Google Sign-Up is enabled. Fill in your details above for instant account setup.');
               }}
               title="Sign up with Google"
               className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group"
@@ -330,15 +387,18 @@ export default function RegisterPage() {
             </Link>
           </div>
 
-          {/* Reassurance note for Tenants */}
+          {/* Quick role-switch hint */}
           <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs text-slate-600 flex items-center justify-between">
-            <span className="font-medium">Are you a tenant?</span>
-            <Link
-              href="/login"
+            <span className="font-medium">
+              {role === 'LANDLORD' ? 'Are you a tenant paying rent?' : 'Are you a property owner/landlord?'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRole(role === 'LANDLORD' ? 'TENANT' : 'LANDLORD')}
               className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
             >
-              Log in with Phone
-            </Link>
+              {role === 'LANDLORD' ? 'Switch to Tenant' : 'Switch to Landlord'}
+            </button>
           </div>
 
           {/* Already have an account link */}
@@ -353,7 +413,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Section C: Legal Footer */}
+        {/* Section D: Legal Footer */}
         <div className="pt-5 border-t border-slate-100 text-center space-y-1">
           <p className="text-[11px] text-slate-500 leading-tight">
             By continuing, you agree to our
@@ -368,5 +428,19 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

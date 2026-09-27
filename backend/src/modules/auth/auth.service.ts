@@ -2,6 +2,8 @@ import { Injectable, ConflictException, UnauthorizedException, NotFoundException
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '@/modules/users/users.service';
+import { PrismaService } from '@/prisma/prisma.service';
+import { UserRole } from '@prisma/client';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -10,6 +12,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -25,8 +28,32 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       phone: dto.phone,
+      role: dto.role || UserRole.LANDLORD,
       passwordHash,
     });
+
+    // If registered as TENANT, auto-link to matching Tenant record if exists
+    if (user.role === UserRole.TENANT) {
+      const cleanPhone = dto.phone ? dto.phone.replace(/[^0-9]/g, '') : '';
+      const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : '';
+
+      const matchingTenant = await this.prisma.tenant.findFirst({
+        where: {
+          OR: [
+            ...(last10 ? [{ phone: { contains: last10 } }] : []),
+            { email: user.email },
+          ],
+          userId: null,
+        },
+      });
+
+      if (matchingTenant) {
+        await this.prisma.tenant.update({
+          where: { id: matchingTenant.id },
+          data: { userId: user.id },
+        });
+      }
+    }
 
     const payload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = this.jwtService.sign(payload);
