@@ -129,13 +129,6 @@ export class UnitsService {
   async remove(ownerId: string, unitId: string) {
     const unit = await this.findOne(ownerId, unitId);
 
-    const activeLease = unit.leases.find((l) => l.status === LeaseStatus.ACTIVE);
-    if (activeLease) {
-      throw new BadRequestException(
-        `Cannot delete unit "${unit.unitNumber}" because it currently has an active lease for tenant "${activeLease.tenant.name}". Please terminate the lease first.`,
-      );
-    }
-
     return this.prisma.$transaction(async (tx) => {
       const leaseIds = unit.leases.map((l) => l.id);
 

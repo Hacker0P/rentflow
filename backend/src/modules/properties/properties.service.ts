@@ -108,20 +108,6 @@ export class PropertiesService {
       throw new NotFoundException(`Property with ID "${propertyId}" not found or not owned by you`);
     }
 
-    // Safety check: Cannot delete property if any unit has an active tenant lease
-    const activeLeases = property.units.flatMap((u) => u.leases);
-    if (activeLeases.length > 0) {
-      const tenantNames = activeLeases
-        .map((l) => l.tenant.name)
-        .filter(Boolean)
-        .slice(0, 3)
-        .join(', ');
-      const more = activeLeases.length > 3 ? ` and ${activeLeases.length - 3} more` : '';
-      throw new BadRequestException(
-        `Cannot delete "${property.name}" because it currently has ${activeLeases.length} active lease(s) (tenants: ${tenantNames}${more}). Please terminate active leases before removing this property.`,
-      );
-    }
-
     const unitIds = property.units.map((u) => u.id);
 
     return this.prisma.$transaction(async (tx) => {

@@ -196,7 +196,7 @@ export default function TenantsPage() {
   const handleDeleteTenant = async (tenantId: string, tenantName: string) => {
     if (
       !confirm(
-        `Are you sure you want to delete tenant "${tenantName}"?\n\nThis will permanently remove the ended tenant profile and their past lease history from your directory. This action cannot be undone.`
+        `Are you sure you want to delete tenant "${tenantName}"?\n\nThis will remove the tenant, end any active lease, free up their unit, and remove them from your directory. This action cannot be undone.`
       )
     ) {
       return;
@@ -395,24 +395,27 @@ ${loginUrl}
                       )}
                     </div>
 
-                    {activeLease && activeLease.status === 'ACTIVE' ? (
-                      <button
-                        onClick={() => handleTerminateLease(activeLease.id)}
-                        className="px-2.5 py-1 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-[11px] font-semibold transition"
-                      >
-                        End Lease
-                      </button>
-                    ) : (
+                    <div className="flex items-center gap-1.5">
+                      {activeLease && activeLease.status === 'ACTIVE' && (
+                        <button
+                          onClick={() => handleTerminateLease(activeLease.id)}
+                          className="px-2.5 py-1 rounded-xl text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] font-semibold transition"
+                          title="End active lease"
+                        >
+                          End Lease
+                        </button>
+                      )}
+
                       <button
                         onClick={() => handleDeleteTenant(t.id, t.name)}
                         disabled={deletingTenantId === t.id}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-[11px] font-bold transition disabled:opacity-50"
-                        title="Delete ended tenant"
+                        title="Delete tenant from directory"
                       >
                         <Trash2 className="w-3 h-3 text-rose-500" />
                         <span>{deletingTenantId === t.id ? 'Deleting...' : 'Delete'}</span>
                       </button>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
@@ -524,24 +527,25 @@ ${loginUrl}
                               </button>
                             )}
 
-                            {activeLease && activeLease.status === 'ACTIVE' ? (
+                            {activeLease && activeLease.status === 'ACTIVE' && (
                               <button
                                 onClick={() => handleTerminateLease(activeLease.id)}
-                                className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-medium transition"
+                                className="px-2.5 py-1.5 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-xs font-semibold transition"
+                                title="End active lease and mark unit as vacant"
                               >
                                 End Lease
                               </button>
-                            ) : (
-                              <button
-                                onClick={() => handleDeleteTenant(t.id, t.name)}
-                                disabled={deletingTenantId === t.id}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-bold transition disabled:opacity-50"
-                                title="Delete ended tenant from directory"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                <span>{deletingTenantId === t.id ? 'Deleting...' : 'Delete Tenant'}</span>
-                              </button>
                             )}
+
+                            <button
+                              onClick={() => handleDeleteTenant(t.id, t.name)}
+                              disabled={deletingTenantId === t.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-bold transition disabled:opacity-50"
+                              title="Delete tenant from directory"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>{deletingTenantId === t.id ? 'Deleting...' : 'Delete Tenant'}</span>
+                            </button>
                           </div>
                         </td>
                       </tr>

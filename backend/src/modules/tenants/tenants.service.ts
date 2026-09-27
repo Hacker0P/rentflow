@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { LeaseStatus } from '@prisma/client';
+import { LeaseStatus, UnitStatus } from '@prisma/client';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
@@ -219,16 +219,21 @@ export class TenantsService {
       throw new NotFoundException(`Tenant is not associated with any of your properties.`);
     }
 
-    // 2. SAFETY CHECK: Cannot delete tenant while they have an ACTIVE lease with this landlord!
-    const activeLease = landlordLeases.find((l) => l.status === LeaseStatus.ACTIVE);
-    if (activeLease) {
-      throw new BadRequestException(
-        `Cannot delete tenant while they have an active lease for Unit ${activeLease.unit.unitNumber}. Please end/terminate the lease first before deleting the tenant.`,
-      );
-    }
+    // Free up any units currently occupied under active leases for this landlord
+    const activeUnitsToFree = landlordLeases
+      .filter((l) => l.status === LeaseStatus.ACTIVE)
+      .map((l) => l.unitId);
 
-    // 3. Delete in atomic transaction
+    // Delete in atomic transaction
     return this.prisma.$transaction(async (tx) => {
+      // 1. Free any occupied units back to VACANT
+      if (activeUnitsToFree.length > 0) {
+        await tx.unit.updateMany({
+          where: { id: { in: activeUnitsToFree } },
+          data: { status: UnitStatus.VACANT },
+        });
+      }
+
       const leaseIds = landlordLeases.map((l) => l.id);
       const invoiceIds = landlordLeases.flatMap((l) => l.invoices.map((i) => i.id));
       const requestIds = landlordRequests.map((r) => r.id);
