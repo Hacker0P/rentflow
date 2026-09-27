@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -44,5 +45,13 @@ export class TenantsController {
     @Body() dto: UpdateTenantDto,
   ) {
     return this.tenantsService.update(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  async remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.tenantsService.remove(user.id, id);
   }
 }

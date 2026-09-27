@@ -1,8 +1,10 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { LeaseStatus } from '@prisma/client';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
@@ -165,6 +167,119 @@ export class TenantsService {
         phone: dto.phone?.trim(),
         email: dto.email ? dto.email.trim().toLowerCase() : undefined,
       },
+    });
+  }
+
+  async remove(ownerId: string, id: string) {
+    // 1. Verify tenant exists and is associated with this landlord
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      include: {
+        leases: {
+          include: {
+            unit: {
+              include: {
+                property: true,
+              },
+            },
+            invoices: {
+              include: {
+                payments: true,
+                items: true,
+              },
+            },
+          },
+        },
+        maintenanceRequests: {
+          include: {
+            unit: {
+              include: {
+                property: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with ID "${id}" not found.`);
+    }
+
+    // Leases belonging to this landlord
+    const landlordLeases = tenant.leases.filter(
+      (l) => l.unit.property.ownerId === ownerId,
+    );
+
+    const landlordRequests = tenant.maintenanceRequests.filter(
+      (m) => m.unit.property.ownerId === ownerId,
+    );
+
+    if (landlordLeases.length === 0 && landlordRequests.length === 0) {
+      throw new NotFoundException(`Tenant is not associated with any of your properties.`);
+    }
+
+    // 2. SAFETY CHECK: Cannot delete tenant while they have an ACTIVE lease with this landlord!
+    const activeLease = landlordLeases.find((l) => l.status === LeaseStatus.ACTIVE);
+    if (activeLease) {
+      throw new BadRequestException(
+        `Cannot delete tenant while they have an active lease for Unit ${activeLease.unit.unitNumber}. Please end/terminate the lease first before deleting the tenant.`,
+      );
+    }
+
+    // 3. Delete in atomic transaction
+    return this.prisma.$transaction(async (tx) => {
+      const leaseIds = landlordLeases.map((l) => l.id);
+      const invoiceIds = landlordLeases.flatMap((l) => l.invoices.map((i) => i.id));
+      const requestIds = landlordRequests.map((r) => r.id);
+
+      // Delete maintenance requests
+      if (requestIds.length > 0) {
+        await tx.maintenanceRequest.deleteMany({
+          where: { id: { in: requestIds } },
+        });
+      }
+
+      // Delete payments, items, and invoices on these leases
+      if (invoiceIds.length > 0) {
+        await tx.payment.deleteMany({
+          where: { invoiceId: { in: invoiceIds } },
+        });
+        await tx.invoiceItem.deleteMany({
+          where: { invoiceId: { in: invoiceIds } },
+        });
+        await tx.invoice.deleteMany({
+          where: { id: { in: invoiceIds } },
+        });
+      }
+
+      // Delete leases for this landlord
+      if (leaseIds.length > 0) {
+        await tx.lease.deleteMany({
+          where: { id: { in: leaseIds } },
+        });
+      }
+
+      // Check if tenant has any remaining leases or requests across ANY property/landlord
+      const remainingLeases = await tx.lease.count({
+        where: { tenantId: id },
+      });
+
+      const remainingRequests = await tx.maintenanceRequest.count({
+        where: { tenantId: id },
+      });
+
+      // If tenant has no other ties, delete the tenant record completely
+      if (remainingLeases === 0 && remainingRequests === 0) {
+        await tx.tenant.delete({
+          where: { id },
+        });
+      }
+
+      return {
+        success: true,
+        message: `Tenant "${tenant.name}" and ended lease history deleted successfully.`,
+      };
     });
   }
 }
