@@ -287,220 +287,95 @@ export default function TenantsPage() {
           }}
         />
       ) : (
-        <div className="space-y-4">
-          {/* Desktop Table View (>= lg screens) */}
-          <div className="hidden lg:block">
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-4">Tenant Name</th>
-                      <th className="py-3 px-4">Property & Unit</th>
-                      <th className="py-3 px-4">Monthly Rent</th>
-                      <th className="py-3 px-4">Due Day</th>
-                      <th className="py-3 px-4">Lease Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {tenants.map((t) => {
-                      const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
-                      const hasActive = t.leases.some((l) => l.status === 'ACTIVE');
+        <div className="space-y-3">
+          {tenants.map((t) => {
+            const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
+            const hasActive = t.leases.some((l) => l.status === 'ACTIVE');
 
-                      return (
-                        <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-200/80 font-bold text-xs flex items-center justify-center shrink-0">
-                                {t.name ? t.name[0].toUpperCase() : 'T'}
-                              </div>
-                              <div>
-                                <span className="font-semibold text-slate-900 block">{t.name}</span>
-                                <span className="text-[11px] text-slate-500 font-mono">{t.phone}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            {activeLease ? (
-                              <div>
-                                <span className="font-semibold text-slate-800 block">
-                                  Unit {activeLease.unit.unitNumber}
-                                </span>
-                                <span className="text-[11px] text-slate-500 block">
-                                  {activeLease.unit.property.name}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 italic">No assigned unit</span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4 font-semibold text-slate-900 font-mono tabular-nums">
-                            {activeLease ? `₹${Number(activeLease.monthlyRent).toLocaleString('en-IN')}` : '—'}
-                          </td>
-
-                          <td className="py-3.5 px-4 text-slate-600">
-                            {activeLease ? `${activeLease.rentDueDay}th of month` : '—'}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <Badge
-                              variant={hasActive ? 'success' : 'neutral'}
-                              size="sm"
-                              dot
-                            >
-                              {hasActive ? 'ACTIVE LEASE' : 'NO ACTIVE LEASE'}
-                            </Badge>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Quick WhatsApp Link */}
-                              <a
-                                href={`https://wa.me/91${t.phone.replace(/[^0-9]/g, '').slice(-10)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Chat on WhatsApp"
-                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </a>
-
-                              {/* Quick Phone Call */}
-                              <a
-                                href={`tel:${t.phone}`}
-                                title="Call Tenant"
-                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
-                              >
-                                <Phone className="w-4 h-4" />
-                              </a>
-
-                              {/* Terminate Lease Button */}
-                              {hasActive && activeLease && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleTerminateLease(activeLease.id)}
-                                  className="px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 rounded-lg border border-amber-200 transition-colors"
-                                >
-                                  End Lease
-                                </button>
-                              )}
-
-                              {/* Delete Tenant Button (when lease is ended) */}
-                              {!hasActive && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteTenant(t.id, t.name)}
-                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                  title="Delete Tenant"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* Mobile Card View (< lg screens) */}
-          <div className="lg:hidden space-y-3">
-            {tenants.map((t) => {
-              const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
-              const hasActive = t.leases.some((l) => l.status === 'ACTIVE');
-
-              return (
-                <Card key={t.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 font-bold text-sm flex items-center justify-center shrink-0">
-                          {t.name ? t.name[0].toUpperCase() : 'T'}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm text-slate-900 leading-snug">{t.name}</h3>
-                          <span className="text-xs text-slate-500 font-mono block">{t.phone}</span>
-                        </div>
+            return (
+              <Card key={t.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 font-bold text-sm flex items-center justify-center shrink-0">
+                        {t.name ? t.name[0].toUpperCase() : 'T'}
                       </div>
-
-                      <Badge
-                        variant={hasActive ? 'success' : 'neutral'}
-                        size="sm"
-                        dot
-                      >
-                        {hasActive ? 'Active' : 'Ended'}
-                      </Badge>
-                    </div>
-
-                    {activeLease && (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Unit</span>
-                          <span className="font-semibold text-slate-800">
-                            Unit {activeLease.unit.unitNumber} ({activeLease.unit.property.name})
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Rent</span>
-                          <span className="font-bold text-slate-900 font-mono tabular-nums">
-                            ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={`https://wa.me/91${t.phone.replace(/[^0-9]/g, '').slice(-10)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium flex items-center gap-1 border border-emerald-200/80"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </a>
-
-                        <a
-                          href={`tel:${t.phone}`}
-                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-
                       <div>
-                        {hasActive && activeLease ? (
-                          <button
-                            type="button"
-                            onClick={() => handleTerminateLease(activeLease.id)}
-                            className="px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 rounded-lg border border-amber-200"
-                          >
-                            End Lease
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTenant(t.id, t.name)}
-                            className="px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200"
-                          >
-                            Delete
-                          </button>
-                        )}
+                        <h3 className="font-semibold text-sm text-slate-900 leading-snug">{t.name}</h3>
+                        <span className="text-xs text-slate-500 font-mono block">{t.phone}</span>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+
+                    <Badge
+                      variant={hasActive ? 'success' : 'neutral'}
+                      size="sm"
+                      dot
+                    >
+                      {hasActive ? 'Active' : 'Ended'}
+                    </Badge>
+                  </div>
+
+                  {activeLease && (
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Unit</span>
+                        <span className="font-semibold text-slate-800">
+                          Unit {activeLease.unit.unitNumber} ({activeLease.unit.property.name})
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Rent</span>
+                        <span className="font-bold text-slate-900 font-mono tabular-nums">
+                          ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://wa.me/91${t.phone.replace(/[^0-9]/g, '').slice(-10)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium flex items-center gap-1 border border-emerald-200/80"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+
+                      <a
+                        href={`tel:${t.phone}`}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+
+                    <div>
+                      {hasActive && activeLease ? (
+                        <button
+                          type="button"
+                          onClick={() => handleTerminateLease(activeLease.id)}
+                          className="px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 rounded-lg border border-amber-200"
+                        >
+                          End Lease
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTenant(t.id, t.name)}
+                          className="px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

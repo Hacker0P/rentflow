@@ -241,117 +241,48 @@ export default function PaymentsPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          {/* Desktop Table View */}
-          <div className="hidden lg:block">
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Tenant & Unit</th>
-                      <th className="py-3 px-4">Channel / Method</th>
-                      <th className="py-3 px-4">Reference / UTR</th>
-                      <th className="py-3 px-4">Billing Month</th>
-                      <th className="py-3 px-4">Amount</th>
-                      <th className="py-3 px-4 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredPayments.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
-                          {new Date(p.paymentDate).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <div>
-                            <span className="font-semibold text-slate-900 block">
-                              {p.invoice.lease.tenant.name}
-                            </span>
-                            <span className="text-[11px] text-slate-500 block">
-                              Unit {p.invoice.lease.unit.unitNumber} ({p.invoice.lease.unit.property.name})
-                            </span>
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700">
-                            {p.paymentMethod}
-                          </span>
-                        </td>
-
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500 max-w-[150px] truncate" title={p.transactionReference}>
-                          {p.transactionReference || '—'}
-                        </td>
-
-                        <td className="py-3.5 px-4 text-slate-600">
-                          {p.invoice.billingMonth}
-                        </td>
-
-                        <td className="py-3.5 px-4 font-bold text-emerald-600 font-mono tabular-nums">
-                          +₹{Number(p.amount).toLocaleString('en-IN')}
-                        </td>
-
-                        <td className="py-3.5 px-4 text-right">
-                          <Badge variant="success" size="sm" dot>
-                            Confirmed
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="lg:hidden space-y-3">
-            {filteredPayments.map((p) => (
-              <Card key={p.id}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="font-semibold text-slate-900 text-xs block">
-                        {p.invoice.lease.tenant.name}
-                      </span>
-                      <span className="text-[11px] text-slate-500 block">
-                        Unit {p.invoice.lease.unit.unitNumber} • {p.invoice.lease.unit.property.name}
-                      </span>
-                    </div>
-                    <span className="font-bold text-sm text-emerald-600 font-mono tabular-nums">
-                      +₹{Number(p.amount).toLocaleString('en-IN')}
+        <div className="space-y-3">
+          {filteredPayments.map((p) => (
+            <Card key={p.id}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="font-semibold text-slate-900 text-xs block">
+                      {p.invoice.lease.tenant.name}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      Unit {p.invoice.lease.unit.unitNumber} • {p.invoice.lease.unit.property.name}
                     </span>
                   </div>
+                  <span className="font-bold text-sm text-emerald-600 font-mono tabular-nums">
+                    +₹{Number(p.amount).toLocaleString('en-IN')}
+                  </span>
+                </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Channel</span>
-                      <span className="text-slate-800 font-medium">{p.paymentMethod}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Date</span>
-                      <span className="text-slate-600">
-                        {new Date(p.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </span>
-                    </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Channel</span>
+                    <span className="text-slate-800 font-medium">{p.paymentMethod}</span>
                   </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Date</span>
+                    <span className="text-slate-600">
+                      {new Date(p.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                </div>
 
-                  {p.transactionReference && (
-                    <div className="text-[11px] text-slate-500 font-mono truncate">
-                      Ref: {p.transactionReference}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                  <div className="text-[11px] text-slate-500 font-mono truncate max-w-[200px]">
+                    {p.transactionReference ? `UTR: ${p.transactionReference}` : `Month: ${p.invoice.billingMonth}`}
+                  </div>
+                  <Badge variant="success" size="sm" dot>
+                    Confirmed
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

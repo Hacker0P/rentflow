@@ -321,221 +321,93 @@ export default function InvoicesPage() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          {/* Desktop Table View */}
-          <div className="hidden lg:block">
-            <Card>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                      <th className="py-3 px-4">Billing Month</th>
-                      <th className="py-3 px-4">Tenant & Unit</th>
-                      <th className="py-3 px-4">Due Date</th>
-                      <th className="py-3 px-4">Amount Due</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredInvoices.map((inv) => {
-                      const isFullyPaid = inv.financialSummary?.isFullyPaid || inv.status === 'PAID';
+        <div className="space-y-3">
+          {filteredInvoices.map((inv) => {
+            const isFullyPaid = inv.financialSummary?.isFullyPaid || inv.status === 'PAID';
 
-                      return (
-                        <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3.5 px-4 font-semibold text-slate-900">
-                            {inv.billingMonth}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div>
-                              <span className="font-semibold text-slate-900 block">
-                                {inv.lease?.tenant?.name || 'Unknown Tenant'}
-                              </span>
-                              <span className="text-[11px] text-slate-500 block">
-                                Unit {inv.lease?.unit?.unitNumber} ({inv.lease?.unit?.property?.name})
-                              </span>
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-slate-600">
-                            {new Date(inv.dueDate).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <span className="font-bold text-slate-900 block font-mono tabular-nums">
-                              ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
-                            </span>
-                            {!isFullyPaid && inv.financialSummary?.remainingBalance > 0 && (
-                              <span className="text-[11px] text-amber-700 block font-mono tabular-nums">
-                                Bal: ₹{Number(inv.financialSummary.remainingBalance).toLocaleString('en-IN')}
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            {getStatusBadge(inv.status)}
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Copy Public Link */}
-                              <button
-                                type="button"
-                                onClick={() => handleCopyLink(inv.id)}
-                                title="Copy Payment Link"
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                              >
-                                {copiedId === inv.id ? (
-                                  <Check className="w-4 h-4 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </button>
-
-                              {/* View / Pay link */}
-                              <a
-                                href={`/pay/${inv.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Open Public Payment Page"
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-
-                              {/* Send WhatsApp */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setWhatsAppModalData({
-                                    invoiceId: inv.id,
-                                    tenantName: inv.lease?.tenant?.name || 'Tenant',
-                                    tenantPhone: inv.lease?.tenant?.phone || '',
-                                    unitNumber: inv.lease?.unit?.unitNumber || '',
-                                    propertyName: inv.lease?.unit?.property?.name || '',
-                                    amount: inv.totalAmount,
-                                    dueDate: inv.dueDate,
-                                    isPaid: isFullyPaid,
-                                    paidAmount: inv.financialSummary?.paidAmount,
-                                    billingMonth: inv.billingMonth,
-                                  })
-                                }
-                                title="Send WhatsApp Notice / Receipt"
-                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </button>
-
-                              {/* Record Payment Button */}
-                              {!isFullyPaid && (
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  onClick={() => openPaymentModal(inv)}
-                                >
-                                  Record Pay
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="lg:hidden space-y-3">
-            {filteredInvoices.map((inv) => {
-              const isFullyPaid = inv.financialSummary?.isFullyPaid || inv.status === 'PAID';
-
-              return (
-                <Card key={inv.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="text-xs font-semibold text-slate-900 block">
-                          {inv.lease?.tenant?.name || 'Tenant'}
-                        </span>
-                        <span className="text-[11px] text-slate-500 block">
-                          Unit {inv.lease?.unit?.unitNumber} • {inv.billingMonth}
-                        </span>
-                      </div>
-                      {getStatusBadge(inv.status)}
+            return (
+              <Card key={inv.id}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-900 block">
+                        {inv.lease?.tenant?.name || 'Tenant'}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block">
+                        Unit {inv.lease?.unit?.unitNumber} • {inv.billingMonth}
+                      </span>
                     </div>
+                    {getStatusBadge(inv.status)}
+                  </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Due Date</span>
-                        <span className="text-slate-700 font-medium">
-                          {new Date(inv.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
-                        <span className="font-bold text-slate-900 font-mono tabular-nums">
-                          ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
-                        </span>
-                      </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Due Date</span>
+                      <span className="text-slate-700 font-medium">
+                        {new Date(inv.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </span>
                     </div>
-
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(inv.id)}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1 font-medium"
-                        >
-                          {copiedId === inv.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiedId === inv.id ? 'Copied' : 'Link'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setWhatsAppModalData({
-                              invoiceId: inv.id,
-                              tenantName: inv.lease?.tenant?.name || 'Tenant',
-                              tenantPhone: inv.lease?.tenant?.phone || '',
-                              unitNumber: inv.lease?.unit?.unitNumber || '',
-                              propertyName: inv.lease?.unit?.property?.name || '',
-                              amount: inv.totalAmount,
-                              dueDate: inv.dueDate,
-                              isPaid: isFullyPaid,
-                              paidAmount: inv.financialSummary?.paidAmount,
-                              billingMonth: inv.billingMonth,
-                            })
-                          }
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-medium flex items-center gap-1"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>WhatsApp</span>
-                        </button>
-                      </div>
-
-                      {!isFullyPaid && (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => openPaymentModal(inv)}
-                        >
-                          Record Pay
-                        </Button>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
+                      <span className="font-bold text-slate-900 font-mono tabular-nums">
+                        ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                      </span>
+                      {!isFullyPaid && inv.financialSummary?.remainingBalance > 0 && (
+                        <span className="text-[10px] text-amber-700 block font-mono">
+                          Bal: ₹{Number(inv.financialSummary.remainingBalance).toLocaleString('en-IN')}
+                        </span>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(inv.id)}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1 font-medium"
+                      >
+                        {copiedId === inv.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedId === inv.id ? 'Copied' : 'Link'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setWhatsAppModalData({
+                            invoiceId: inv.id,
+                            tenantName: inv.lease?.tenant?.name || 'Tenant',
+                            tenantPhone: inv.lease?.tenant?.phone || '',
+                            unitNumber: inv.lease?.unit?.unitNumber || '',
+                            propertyName: inv.lease?.unit?.property?.name || '',
+                            amount: inv.totalAmount,
+                            dueDate: inv.dueDate,
+                            isPaid: isFullyPaid,
+                            paidAmount: inv.financialSummary?.paidAmount,
+                            billingMonth: inv.billingMonth,
+                          })
+                        }
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-medium flex items-center gap-1"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+                    </div>
+
+                    {!isFullyPaid && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => openPaymentModal(inv)}
+                      >
+                        Record Pay
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
