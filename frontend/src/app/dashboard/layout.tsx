@@ -96,14 +96,14 @@ export default function DashboardLayout({
             {/* Smartphone Device Frame */}
             <div className="max-w-[420px] w-full h-[860px] bg-slate-50 rounded-[50px] border-[10px] border-slate-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] relative flex flex-col overflow-hidden ring-1 ring-white/10">
               {/* iPhone Status Bar */}
-              <div className="bg-slate-900 text-white px-7 pt-3 pb-1 flex items-center justify-between text-[11px] font-semibold select-none shrink-0">
+              <div className="bg-white text-slate-800 px-7 pt-3 pb-1 flex items-center justify-between text-[11px] font-semibold select-none shrink-0 border-b border-slate-100">
                 <span>9:41</span>
                 {/* Dynamic Island / Notch */}
-                <div className="w-24 h-4 bg-black rounded-full mx-auto" />
+                <div className="w-24 h-4 bg-slate-900 rounded-full mx-auto" />
                 <div className="flex items-center gap-1.5">
-                  <Wifi className="w-3 h-3 text-white" />
-                  <span className="text-[10px] font-bold">5G</span>
-                  <Battery className="w-3.5 h-3.5 text-white" />
+                  <Wifi className="w-3 h-3 text-slate-700" />
+                  <span className="text-[10px] font-bold text-slate-700">5G</span>
+                  <Battery className="w-3.5 h-3.5 text-slate-700" />
                 </div>
               </div>
 

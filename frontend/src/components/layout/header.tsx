@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getStoredUser } from '@/lib/api';
 import { UserCheck, Smartphone, Monitor } from 'lucide-react';
 import { NotificationBell } from './notification-bell';
@@ -49,18 +50,22 @@ export function Header({ title, viewMode = 'DESKTOP', onToggleViewMode }: Header
           </button>
         )}
 
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-          <div className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center font-bold text-xs">
+        <Link
+          href="/dashboard/settings"
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition active:scale-95 shadow-xs"
+          title="Account & Payout Settings"
+        >
+          <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
             {user?.name ? user.name[0].toUpperCase() : 'L'}
           </div>
           <div className="text-left text-xs pr-1">
-            <span className="font-semibold text-slate-800 block leading-tight">{user?.name || 'Landlord'}</span>
-            <span className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium">
-              <UserCheck className="w-3 h-3" />
-              Active Landlord
+            <span className="font-bold text-slate-800 block leading-tight">{user?.name || 'Landlord'}</span>
+            <span className="text-[11px] text-emerald-700 flex items-center gap-1 font-semibold">
+              <UserCheck className="w-3 h-3 text-emerald-600" />
+              Verified Landlord
             </span>
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );

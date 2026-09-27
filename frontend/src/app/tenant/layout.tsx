@@ -63,17 +63,22 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen bg-slate-100/70 flex flex-col text-slate-800 pb-20 md:pb-8">
       {/* Top Header */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
+      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md shadow-teal-950/20">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md shadow-teal-950/10 border border-teal-500/20">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-extrabold text-slate-900 tracking-tight text-base block leading-none">
-                RentFlow
-              </span>
-              <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider block mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-slate-900 tracking-tight text-base block leading-none">
+                  RentFlow
+                </span>
+                <span className="text-[10px] font-extrabold text-teal-800 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-full">
+                  Resident
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
                 Tenant Portal
               </span>
             </div>
