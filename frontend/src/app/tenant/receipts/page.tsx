@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   X,
   Sparkles,
+  MessageCircle,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 
@@ -333,13 +334,26 @@ export default function TenantReceiptsPage() {
                   {/* Right Action buttons */}
                   <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
                     {isPaid ? (
-                      <button
-                        onClick={() => setSelectedReceipt(inv)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs active:scale-95"
-                      >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>View Receipt</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setSelectedReceipt(inv)}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs active:scale-95"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          <span>View Receipt</span>
+                        </button>
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(
+                            `✅ Rent Receipt for ${monthLabel}\nUnit ${unit?.unitNumber}, ${property?.name}\nAmount: ₹${inv.paidAmount?.toLocaleString('en-IN')}\nStatus: Paid & Verified\nView receipt:\n${typeof window !== 'undefined' ? `${window.location.origin}/pay/${inv.id}` : ''}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Share on WhatsApp"
+                          className="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 transition active:scale-95"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                      </div>
                     ) : (
                       <>
                         <Link
@@ -388,6 +402,17 @@ export default function TenantReceiptsPage() {
                 <span className="text-xs font-bold">Rent Payment Receipt</span>
               </div>
               <div className="flex items-center gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `✅ Rent Payment Receipt\nUnit ${unit?.unitNumber}, ${property?.name}\nBilling Month: ${new Date(selectedReceipt.billingMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}\nAmount: ₹${selectedReceipt.paidAmount?.toLocaleString('en-IN')}\nStatus: Paid & Verified\nReceipt link: ${typeof window !== 'undefined' ? `${window.location.origin}/pay/${selectedReceipt.id}` : ''}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-300 text-xs font-bold transition border border-white/10"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Share WhatsApp</span>
+                </a>
                 <button
                   onClick={() => window.print()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold transition"

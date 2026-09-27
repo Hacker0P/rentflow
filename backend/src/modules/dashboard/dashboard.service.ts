@@ -178,13 +178,16 @@ export class DashboardService {
       },
       recentPayments: recentPayments.map((p) => ({
         id: p.id,
+        invoiceId: p.invoice.id,
         amount: Number(p.amount),
         paymentDate: p.paymentDate,
         paymentMethod: p.paymentMethod,
         transactionReference: p.transactionReference,
         tenantName: p.invoice.lease.tenant.name,
+        tenantPhone: p.invoice.lease.tenant.phone,
         unitNumber: p.invoice.lease.unit.unitNumber,
         propertyName: p.invoice.lease.unit.property.name,
+        billingMonth: p.invoice.billingMonth,
       })),
       upcomingInvoices: upcomingInvoices.map((inv) => {
         const total = Number(inv.totalAmount);

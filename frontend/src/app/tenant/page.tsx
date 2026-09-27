@@ -184,11 +184,7 @@ export default function TenantHomePage() {
       });
 
       setReportSuccess('Payment confirmation recorded! Official receipt updated.');
-      setTimeout(() => {
-        setShowReportModal(false);
-        setReportSuccess(null);
-        fetchDashboard();
-      }, 1800);
+      fetchDashboard();
     } catch (err: any) {
       setReportError(err.message || 'Failed to submit payment confirmation.');
     } finally {
@@ -763,88 +759,118 @@ export default function TenantHomePage() {
               </button>
             </div>
 
-            {reportSuccess && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{reportSuccess}</span>
-              </div>
-            )}
-
-            {reportError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{reportError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleReportSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Amount Paid (₹)</label>
-                <input
-                  type="number"
-                  required
-                  value={reportAmount}
-                  onChange={(e) => setReportAmount(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
-                <select
-                  value={reportMethod}
-                  onChange={(e) => setReportMethod(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                >
-                  <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
-                  <option value="BANK_TRANSFER">Bank IMPS / NEFT Transfer</option>
-                  <option value="CASH">Cash directly handed over</option>
-                  <option value="OTHER">Cheque / Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  12-Digit UTR / Transaction Reference (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 427189038291"
-                  value={reportRef}
-                  onChange={(e) => setReportRef(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Notes for Landlord (Optional)</label>
-                <textarea
-                  rows={2}
-                  placeholder="Paid from HDFC account ending in 4102..."
-                  value={reportNotes}
-                  onChange={(e) => setReportNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+            {reportSuccess ? (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span className="font-bold">{reportSuccess}</span>
+                </div>
+                <p className="text-slate-600 text-xs">
+                  Your landlord has been alerted. You can also send them the payment proof directly on WhatsApp with 1 tap:
+                </p>
+                {landlord?.phone && (
+                  <a
+                    href={`https://wa.me/${landlord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                      `Namaste ${landlord.name} Ji 🙏, I have transferred the rent of ₹${reportAmount} for Unit ${unit.unitNumber} (${property.name}) via ${reportMethod}.${reportRef ? `\n🔢 UTR Reference: ${reportRef}` : ''}\n\nKindly check and verify on RentFlow. Thank you!`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-95"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span>Notify Landlord on WhatsApp</span>
+                  </a>
+                )}
                 <button
                   type="button"
-                  onClick={() => setShowReportModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                  onClick={() => {
+                    setShowReportModal(false);
+                    setReportSuccess(null);
+                  }}
+                  className="w-full py-2 text-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingReport}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
-                >
-                  {submittingReport && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{submittingReport ? 'Submitting...' : 'Record Payment Proof'}</span>
+                  Done & Close
                 </button>
               </div>
-            </form>
+            ) : (
+              <>
+                {reportError && (
+                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{reportError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleReportSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Amount Paid (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      value={reportAmount}
+                      onChange={(e) => setReportAmount(Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+                    <select
+                      value={reportMethod}
+                      onChange={(e) => setReportMethod(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
+                    >
+                      <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
+                      <option value="BANK_TRANSFER">Bank IMPS / NEFT Transfer</option>
+                      <option value="CASH">Cash directly handed over</option>
+                      <option value="OTHER">Cheque / Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      12-Digit UTR / Transaction Reference (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 427189038291"
+                      value={reportRef}
+                      onChange={(e) => setReportRef(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Notes for Landlord (Optional)</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Paid from HDFC account ending in 4102..."
+                      value={reportNotes}
+                      onChange={(e) => setReportNotes(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowReportModal(false)}
+                      className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingReport}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      {submittingReport && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      <span>{submittingReport ? 'Submitting...' : 'Record Payment Proof'}</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

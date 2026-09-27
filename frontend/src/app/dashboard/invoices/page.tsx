@@ -117,8 +117,31 @@ export default function InvoicesPage() {
         }),
       });
 
+      const invToAcknowledge = payingInvoice;
+      const recordedAmount = Number(payAmount);
+      const recordedMethod = payMethod;
+      const recordedRef = payRef;
+
       setPayingInvoice(null);
       await fetchInvoices();
+
+      // Automatically offer to send WhatsApp receipt
+      if (invToAcknowledge && invToAcknowledge.lease?.tenant?.phone) {
+        setWhatsAppModalData({
+          invoiceId: invToAcknowledge.id,
+          tenantName: invToAcknowledge.lease.tenant.name,
+          tenantPhone: invToAcknowledge.lease.tenant.phone,
+          unitNumber: invToAcknowledge.lease.unit.unitNumber,
+          propertyName: invToAcknowledge.lease.unit.property.name,
+          amount: invToAcknowledge.totalAmount,
+          paidAmount: recordedAmount,
+          dueDate: invToAcknowledge.dueDate,
+          billingMonth: invToAcknowledge.billingMonth,
+          isPaid: true,
+          paymentMethod: recordedMethod,
+          transactionReference: recordedRef || undefined,
+        });
+      }
     } catch (err: any) {
       setPayError(err.message || 'Failed to record payment');
     } finally {
@@ -358,8 +381,29 @@ export default function InvoicesPage() {
                 {/* Mobile Action Buttons */}
                 <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100">
                   <div className="flex items-center gap-1.5">
-                    {/* WhatsApp Reminder (if unpaid) */}
-                    {!inv.financialSummary.isFullyPaid && (
+                    {/* WhatsApp Action (Reminder if unpaid, Receipt if paid) */}
+                    {inv.financialSummary.isFullyPaid ? (
+                      <button
+                        onClick={() =>
+                          setWhatsAppModalData({
+                            invoiceId: inv.id,
+                            tenantName: inv.lease.tenant.name,
+                            tenantPhone: inv.lease.tenant.phone,
+                            unitNumber: inv.lease.unit.unitNumber,
+                            propertyName: inv.lease.unit.property.name,
+                            amount: inv.totalAmount,
+                            paidAmount: inv.financialSummary.paidAmount,
+                            dueDate: inv.dueDate,
+                            billingMonth: inv.billingMonth,
+                            isPaid: true,
+                          })
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/80 hover:bg-emerald-100 transition active:scale-95"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>WA Receipt</span>
+                      </button>
+                    ) : (
                       <button
                         onClick={() =>
                           setWhatsAppModalData({
@@ -370,6 +414,8 @@ export default function InvoicesPage() {
                             propertyName: inv.lease.unit.property.name,
                             amount: inv.financialSummary.remainingBalance,
                             dueDate: inv.dueDate,
+                            billingMonth: inv.billingMonth,
+                            isPaid: false,
                           })
                         }
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/80 hover:bg-emerald-100 transition active:scale-95"
@@ -477,8 +523,29 @@ export default function InvoicesPage() {
                       <td className="py-4 px-4">{getStatusBadge(inv.status)}</td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* WhatsApp Reminder (if unpaid) */}
-                          {!inv.financialSummary.isFullyPaid && (
+                          {/* WhatsApp Action (Receipt if paid, Reminder if unpaid) */}
+                          {inv.financialSummary.isFullyPaid ? (
+                            <button
+                              onClick={() =>
+                                setWhatsAppModalData({
+                                  invoiceId: inv.id,
+                                  tenantName: inv.lease.tenant.name,
+                                  tenantPhone: inv.lease.tenant.phone,
+                                  unitNumber: inv.lease.unit.unitNumber,
+                                  propertyName: inv.lease.unit.property.name,
+                                  amount: inv.totalAmount,
+                                  paidAmount: inv.financialSummary.paidAmount,
+                                  dueDate: inv.dueDate,
+                                  billingMonth: inv.billingMonth,
+                                  isPaid: true,
+                                })
+                              }
+                              title="Send Official Rent Receipt via WhatsApp"
+                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
+                            >
+                              <MessageCircle className="w-4 h-4 text-emerald-600" />
+                            </button>
+                          ) : (
                             <button
                               onClick={() =>
                                 setWhatsAppModalData({
@@ -489,9 +556,11 @@ export default function InvoicesPage() {
                                   propertyName: inv.lease.unit.property.name,
                                   amount: inv.financialSummary.remainingBalance,
                                   dueDate: inv.dueDate,
+                                  billingMonth: inv.billingMonth,
+                                  isPaid: false,
                                 })
                               }
-                              title="Send WhatsApp Reminder (3 Templates)"
+                              title="Send WhatsApp Reminder (Pre-Set Templates)"
                               className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
                             >
                               <MessageCircle className="w-4 h-4" />

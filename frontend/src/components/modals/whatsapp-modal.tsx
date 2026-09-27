@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   HeartHandshake,
   CalendarCheck,
+  CheckCircle2,
+  Receipt,
+  Sparkles,
 } from 'lucide-react';
 
 export interface WhatsAppReminderData {
@@ -27,6 +30,11 @@ export interface WhatsAppReminderData {
   dueDate: string;
   upiId?: string;
   daysOverdue?: number;
+  isPaid?: boolean;
+  paidAmount?: number;
+  billingMonth?: string;
+  paymentMethod?: string;
+  transactionReference?: string;
 }
 
 interface WhatsAppModalProps {
@@ -35,7 +43,16 @@ interface WhatsAppModalProps {
   data: WhatsAppReminderData | null;
 }
 
-type TemplateType = 'GENTLE' | 'DUE_TODAY' | 'OVERDUE';
+export type TemplateType = 'GENTLE' | 'DUE_TODAY' | 'OVERDUE' | 'RECEIPT';
+
+export function openWhatsAppDirect(phone: string, text: string) {
+  let cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+  if (cleanPhone.length === 10) {
+    cleanPhone = `91${cleanPhone}`;
+  }
+  const encoded = encodeURIComponent(text);
+  window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank', 'noopener,noreferrer');
+}
 
 export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>('GENTLE');
@@ -65,6 +82,12 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
   useEffect(() => {
     if (!data) return;
 
+    if (data.isPaid) {
+      setSelectedTemplate('RECEIPT');
+      setMessage(generateTemplateText('RECEIPT', data));
+      return;
+    }
+
     const { isOverdue, isDueToday } = getDueCalculations();
     let initialType: TemplateType = 'GENTLE';
     if (isOverdue) initialType = 'OVERDUE';
@@ -90,9 +113,28 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
     const overdueCount = item.daysOverdue ?? (isOverdue ? daysOverdue : 3);
 
     switch (type) {
+      case 'RECEIPT': {
+        const settledAmount = Number(item.paidAmount || item.amount).toLocaleString('en-IN');
+        const monthStr = item.billingMonth
+          ? new Date(item.billingMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+          : 'the month';
+        const methodStr = item.paymentMethod ? ` (${item.paymentMethod})` : '';
+        const utrStr = item.transactionReference
+          ? `\n🔢 *Reference / UTR:* \`${item.transactionReference}\``
+          : '';
+        return (
+          `✅ *RENT PAYMENT CONFIRMATION & RECEIPT*\n\n` +
+          `Namaste *${item.tenantName}* Ji 🙏,\n\n` +
+          `We have successfully received and verified your rent payment of *₹${settledAmount}* for *Unit ${item.unitNumber}${propertyLabel}* (${monthStr}).\n` +
+          `💳 *Payment Mode:* Verified${methodStr}${utrStr}\n\n` +
+          `📄 *View / Download Official Receipt:*\n${payLink}\n\n` +
+          `Thank you for your timely payment! Have a great month ahead. ✨`
+        );
+      }
+
       case 'GENTLE':
         return (
-          `Hi *${item.tenantName}*,\n\n` +
+          `Namaste *${item.tenantName}* Ji 🙏,\n\n` +
           `Hope you are having a wonderful week! 😊\n` +
           `This is a gentle reminder that the rent of *₹${formattedAmount}* for *Unit ${item.unitNumber}${propertyLabel}* is due on *${formattedDueDate}*.\n\n` +
           `💳 *UPI ID for Quick Transfer:*\n\`${upi}\`\n\n` +
@@ -102,7 +144,7 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
 
       case 'DUE_TODAY':
         return (
-          `Hi *${item.tenantName}*,\n\n` +
+          `Namaste *${item.tenantName}* Ji 🙏,\n\n` +
           `The rent payment of *₹${formattedAmount}* for *Unit ${item.unitNumber}${propertyLabel}* is *due today (${formattedDueDate})*.\n\n` +
           `💳 *UPI ID for Instant Transfer:*\n\`${upi}\`\n\n` +
           `🔗 *Submit Payment UTR & Get Receipt:*\n${payLink}\n\n` +
@@ -112,12 +154,12 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
       case 'OVERDUE':
         return (
           `⚠️ *URGENT: OVERDUE RENT NOTICE*\n\n` +
-          `Hi *${item.tenantName}*,\n\n` +
+          `Namaste *${item.tenantName}* Ji,\n\n` +
           `Your rent payment of *₹${formattedAmount}* for *Unit ${item.unitNumber}${propertyLabel}* is now *overdue by ${overdueCount} day(s)* (Due date was ${formattedDueDate}).\n\n` +
           `Please clear the pending balance at your earliest convenience:\n` +
           `💳 *UPI ID:* \`${upi}\`\n` +
           `🔗 *Confirm Payment & Clear Balance:*\n${payLink}\n\n` +
-          `Kindly confirm once transferred with the bank UTR reference to avoid late penalties. Thank you.`
+          `Kindly confirm once transferred with the bank UTR reference. Thank you.`
         );
     }
   };
@@ -140,15 +182,7 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
 
   const handleOpenWhatsApp = () => {
     if (!data) return;
-    // Clean phone number (remove spaces, dashes)
-    let cleanPhone = data.tenantPhone.replace(/[^0-9]/g, '');
-    if (cleanPhone.length === 10) {
-      cleanPhone = `91${cleanPhone}`; // Default to India country code
-    }
-
-    const encoded = encodeURIComponent(message);
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encoded}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    openWhatsAppDirect(data.tenantPhone, message);
   };
 
   if (!isOpen || !data) return null;
@@ -165,9 +199,11 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-white">WhatsApp Rent Reminder</h3>
+              <h3 className="font-bold text-base text-white">
+                {data.isPaid ? 'Send WhatsApp Receipt' : 'WhatsApp Rent Reminder'}
+              </h3>
               <p className="text-xs text-slate-400">
-                1-Click formatted templates for {data.tenantName}
+                1-Click formatted Indian templates for {data.tenantName}
               </p>
             </div>
           </div>
@@ -193,12 +229,17 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
             </span>
             <span>•</span>
             <span className="font-bold text-emerald-400">
-              ₹{Number(data.amount).toLocaleString('en-IN')}
+              ₹{Number(data.isPaid ? data.paidAmount || data.amount : data.amount).toLocaleString('en-IN')}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            {isOverdue ? (
+            {data.isPaid ? (
+              <span className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Payment Received
+              </span>
+            ) : isOverdue ? (
               <span className="bg-rose-500/15 border border-rose-500/30 text-rose-400 text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Overdue by {daysOverdue}d
@@ -217,44 +258,63 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
           </div>
         </div>
 
-        {/* 3 Pre-Set Template Selectors */}
+        {/* Template Selectors */}
         <div className="p-4 sm:p-5 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
               Choose Pre-Set Template
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Option 1: Gentle Reminder */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Option 1: Payment Receipt */}
               <button
                 type="button"
-                onClick={() => handleTemplateChange('GENTLE')}
-                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1.5 ${
-                  selectedTemplate === 'GENTLE'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-sm'
+                onClick={() => handleTemplateChange('RECEIPT')}
+                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between gap-1 ${
+                  selectedTemplate === 'RECEIPT'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-sm ring-1 ring-emerald-500'
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-semibold text-xs">
-                  <HeartHandshake className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Gentle Reminder</span>
+                <div className="flex items-center gap-1.5 font-semibold text-xs text-emerald-400">
+                  <Receipt className="w-3.5 h-3.5 shrink-0" />
+                  <span>Receipt</span>
                 </div>
                 <span className="text-[10px] text-slate-400 leading-tight">
-                  3 days before due date. Friendly & polite.
+                  Payment confirmed & verified receipt link.
                 </span>
               </button>
 
-              {/* Option 2: Due Today */}
+              {/* Option 2: Gentle Reminder */}
               <button
                 type="button"
-                onClick={() => handleTemplateChange('DUE_TODAY')}
-                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1.5 ${
-                  selectedTemplate === 'DUE_TODAY'
-                    ? 'border-amber-500 bg-amber-500/10 text-white shadow-sm'
+                onClick={() => handleTemplateChange('GENTLE')}
+                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between gap-1 ${
+                  selectedTemplate === 'GENTLE'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-sm ring-1 ring-emerald-500'
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-300'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-semibold text-xs">
-                  <CalendarCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                  <HeartHandshake className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Gentle</span>
+                </div>
+                <span className="text-[10px] text-slate-400 leading-tight">
+                  Polite reminder 3 days before due date.
+                </span>
+              </button>
+
+              {/* Option 3: Due Today */}
+              <button
+                type="button"
+                onClick={() => handleTemplateChange('DUE_TODAY')}
+                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between gap-1 ${
+                  selectedTemplate === 'DUE_TODAY'
+                    ? 'border-amber-500 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-500'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <CalendarCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Due Today</span>
                 </div>
                 <span className="text-[10px] text-slate-400 leading-tight">
@@ -262,22 +322,22 @@ export function WhatsAppModal({ isOpen, onClose, data }: WhatsAppModalProps) {
                 </span>
               </button>
 
-              {/* Option 3: Firm Overdue */}
+              {/* Option 4: Firm Overdue */}
               <button
                 type="button"
                 onClick={() => handleTemplateChange('OVERDUE')}
-                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between gap-1.5 ${
+                className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between gap-1 ${
                   selectedTemplate === 'OVERDUE'
-                    ? 'border-rose-500 bg-rose-500/10 text-white shadow-sm'
+                    ? 'border-rose-500 bg-rose-500/10 text-white shadow-sm ring-1 ring-rose-500'
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-300'
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-semibold text-xs">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>Firm Overdue</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <span>Overdue</span>
                 </div>
                 <span className="text-[10px] text-slate-400 leading-tight">
-                  Urgent notice citing days overdue & penalties.
+                  Urgent notice citing overdue days.
                 </span>
               </button>
             </div>

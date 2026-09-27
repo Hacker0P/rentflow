@@ -219,13 +219,28 @@ export default function TenantInvoicePaymentPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 print:hidden">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(
+                invoice.remainingBalance > 0
+                  ? `Namaste! Here is the rent bill for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) of ₹${invoice.remainingBalance.toLocaleString('en-IN')} due on ${dueDateFormatted}.\n\nPay online via UPI / QR here:\n${typeof window !== 'undefined' ? window.location.href : ''}`
+                  : `✅ Verified Rent Receipt\n\nNamaste! Rent payment of ₹${Number(invoice.paidAmount || invoice.totalAmount).toLocaleString('en-IN')} for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) has been settled in full.\n\nView official receipt:\n${typeof window !== 'undefined' ? window.location.href : ''}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-emerald-800 text-xs font-bold rounded-2xl shadow-xs transition active:scale-95"
+              title="Share on WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Share WhatsApp</span>
+            </a>
+
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl shadow-xs transition active:scale-95"
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl shadow-xs transition active:scale-95"
             >
               <Printer className="w-4 h-4 text-slate-500" />
-              <span>Print Official Receipt</span>
+              <span>Print Receipt</span>
             </button>
           </div>
         </div>
@@ -528,14 +543,39 @@ export default function TenantInvoicePaymentPage() {
               )}
             </div>
           ) : (
-            <div className="p-6 sm:p-8 bg-emerald-50/50 border-t border-emerald-100 text-center print:border-none">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto mb-2">
+            <div className="p-6 sm:p-8 bg-emerald-50/50 border-t border-emerald-100 text-center print:border-none space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-emerald-900">Thank You! Payment Received</h3>
-              <p className="text-xs text-emerald-700 mt-1">
-                This invoice has been settled in full. Keep this document as your verified rent receipt.
-              </p>
+              <div>
+                <h3 className="text-lg font-bold text-emerald-900">Thank You! Payment Received</h3>
+                <p className="text-xs text-emerald-700 mt-1">
+                  This invoice has been settled in full. Keep this document as your verified rent receipt.
+                </p>
+              </div>
+
+              {/* 1-Tap WhatsApp Share & Print Actions */}
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1 print:hidden">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `✅ *Verified Rent Receipt*\n\nNamaste! Rent payment of ₹${Number(invoice.paidAmount || invoice.totalAmount).toLocaleString('en-IN')} for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) towards ${formattedMonth} has been settled in full.\n\nView official receipt:\n${typeof window !== 'undefined' ? window.location.href : ''}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Share Receipt on WhatsApp</span>
+                </a>
+
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition"
+                >
+                  <Printer className="w-4 h-4 text-slate-500" />
+                  <span>Print Receipt</span>
+                </button>
+              </div>
             </div>
           )}
 

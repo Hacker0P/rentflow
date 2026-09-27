@@ -44,13 +44,16 @@ interface DashboardData {
   };
   recentPayments: Array<{
     id: string;
+    invoiceId?: string;
     amount: number;
     paymentDate: string;
     paymentMethod: string;
     transactionReference?: string;
     tenantName: string;
+    tenantPhone?: string;
     unitNumber: string;
     propertyName: string;
+    billingMonth?: string;
   }>;
   upcomingInvoices: Array<{
     id: string;
@@ -623,18 +626,45 @@ export default function DashboardPage() {
                       {new Date(p.paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} via {p.paymentMethod} • {p.propertyName}
                     </span>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="font-black text-xs text-emerald-700 block">
-                      +₹{p.amount.toLocaleString('en-IN')}
-                    </span>
-                    {p.transactionReference ? (
-                      <span className="text-[10px] text-slate-400 font-mono truncate block max-w-[120px]" title={p.transactionReference}>
-                        Ref: {p.transactionReference}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right">
+                      <span className="font-black text-xs text-emerald-700 block">
+                        +₹{p.amount.toLocaleString('en-IN')}
                       </span>
-                    ) : (
-                      <span className="text-[10px] text-emerald-600 font-semibold block">
-                        Verified
-                      </span>
+                      {p.transactionReference ? (
+                        <span className="text-[10px] text-slate-400 font-mono truncate block max-w-[120px]" title={p.transactionReference}>
+                          Ref: {p.transactionReference}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-600 font-semibold block">
+                          Verified
+                        </span>
+                      )}
+                    </div>
+
+                    {p.tenantPhone && p.invoiceId && (
+                      <button
+                        onClick={() =>
+                          setWhatsAppModalData({
+                            invoiceId: p.invoiceId!,
+                            tenantName: p.tenantName,
+                            tenantPhone: p.tenantPhone!,
+                            unitNumber: p.unitNumber,
+                            propertyName: p.propertyName,
+                            amount: p.amount,
+                            paidAmount: p.amount,
+                            dueDate: p.paymentDate,
+                            billingMonth: p.billingMonth,
+                            isPaid: true,
+                            paymentMethod: p.paymentMethod,
+                            transactionReference: p.transactionReference,
+                          })
+                        }
+                        title="Send WhatsApp Receipt to Tenant"
+                        className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 transition active:scale-95"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      </button>
                     )}
                   </div>
                 </div>
