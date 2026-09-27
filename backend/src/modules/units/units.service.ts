@@ -8,7 +8,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { PropertiesService } from '@/modules/properties/properties.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
-import { UnitStatus } from '@prisma/client';
+import { UnitStatus, LeaseStatus } from '@prisma/client';
 
 @Injectable()
 export class UnitsService {
@@ -129,14 +129,47 @@ export class UnitsService {
   async remove(ownerId: string, unitId: string) {
     const unit = await this.findOne(ownerId, unitId);
 
-    if (unit.leases.length > 0) {
+    const activeLease = unit.leases.find((l) => l.status === LeaseStatus.ACTIVE);
+    if (activeLease) {
       throw new BadRequestException(
-        `Cannot delete unit "${unit.unitNumber}" because it has ${unit.leases.length} lease record(s). Financial history must be preserved.`,
+        `Cannot delete unit "${unit.unitNumber}" because it currently has an active lease for tenant "${activeLease.tenant.name}". Please terminate the lease first.`,
       );
     }
 
-    return this.prisma.unit.delete({
-      where: { id: unitId },
+    return this.prisma.$transaction(async (tx) => {
+      const leaseIds = unit.leases.map((l) => l.id);
+
+      if (leaseIds.length > 0) {
+        const invoices = await tx.invoice.findMany({
+          where: { leaseId: { in: leaseIds } },
+          select: { id: true },
+        });
+        const invoiceIds = invoices.map((i) => i.id);
+
+        if (invoiceIds.length > 0) {
+          await tx.payment.deleteMany({
+            where: { invoiceId: { in: invoiceIds } },
+          });
+          await tx.invoiceItem.deleteMany({
+            where: { invoiceId: { in: invoiceIds } },
+          });
+          await tx.invoice.deleteMany({
+            where: { id: { in: invoiceIds } },
+          });
+        }
+
+        await tx.lease.deleteMany({
+          where: { id: { in: leaseIds } },
+        });
+      }
+
+      await tx.maintenanceRequest.deleteMany({
+        where: { unitId },
+      });
+
+      return tx.unit.delete({
+        where: { id: unitId },
+      });
     });
   }
 }

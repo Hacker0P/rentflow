@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
-import { UnitStatus } from '@prisma/client';
+import { UnitStatus, LeaseStatus } from '@prisma/client';
 
 @Injectable()
 export class PropertiesService {
@@ -87,16 +87,91 @@ export class PropertiesService {
   }
 
   async remove(ownerId: string, propertyId: string) {
-    const property = await this.findOne(ownerId, propertyId);
+    const property = await this.prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        ownerId,
+      },
+      include: {
+        units: {
+          include: {
+            leases: {
+              where: { status: LeaseStatus.ACTIVE },
+              include: { tenant: true },
+            },
+          },
+        },
+      },
+    });
 
-    if (property.units.length > 0) {
+    if (!property) {
+      throw new NotFoundException(`Property with ID "${propertyId}" not found or not owned by you`);
+    }
+
+    // Safety check: Cannot delete property if any unit has an active tenant lease
+    const activeLeases = property.units.flatMap((u) => u.leases);
+    if (activeLeases.length > 0) {
+      const tenantNames = activeLeases
+        .map((l) => l.tenant.name)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(', ');
+      const more = activeLeases.length > 3 ? ` and ${activeLeases.length - 3} more` : '';
       throw new BadRequestException(
-        `Cannot delete property "${property.name}" because it still contains ${property.units.length} unit(s). Delete all units first to preserve data integrity.`,
+        `Cannot delete "${property.name}" because it currently has ${activeLeases.length} active lease(s) (tenants: ${tenantNames}${more}). Please terminate active leases before removing this property.`,
       );
     }
 
-    return this.prisma.property.delete({
-      where: { id: propertyId },
+    const unitIds = property.units.map((u) => u.id);
+
+    return this.prisma.$transaction(async (tx) => {
+      if (unitIds.length > 0) {
+        // Find all non-active leases for these units
+        const pastLeases = await tx.lease.findMany({
+          where: { unitId: { in: unitIds } },
+          select: { id: true },
+        });
+        const leaseIds = pastLeases.map((l) => l.id);
+
+        if (leaseIds.length > 0) {
+          const invoices = await tx.invoice.findMany({
+            where: { leaseId: { in: leaseIds } },
+            select: { id: true },
+          });
+          const invoiceIds = invoices.map((i) => i.id);
+
+          if (invoiceIds.length > 0) {
+            await tx.payment.deleteMany({
+              where: { invoiceId: { in: invoiceIds } },
+            });
+            await tx.invoiceItem.deleteMany({
+              where: { invoiceId: { in: invoiceIds } },
+            });
+            await tx.invoice.deleteMany({
+              where: { id: { in: invoiceIds } },
+            });
+          }
+
+          await tx.lease.deleteMany({
+            where: { id: { in: leaseIds } },
+          });
+        }
+
+        // Delete maintenance requests for units in this property
+        await tx.maintenanceRequest.deleteMany({
+          where: { unitId: { in: unitIds } },
+        });
+
+        // Delete units in this property
+        await tx.unit.deleteMany({
+          where: { id: { in: unitIds } },
+        });
+      }
+
+      // Finally delete the property
+      return tx.property.delete({
+        where: { id: propertyId },
+      });
     });
   }
 }
