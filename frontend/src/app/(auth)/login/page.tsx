@@ -12,9 +12,7 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Sparkles,
   ArrowLeft,
-  CheckCircle2,
   ShieldCheck,
 } from 'lucide-react';
 import { apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
@@ -22,8 +20,8 @@ import { apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
 export default function LoginPage() {
   const router = useRouter();
   const [role, setRole] = useState<'LANDLORD' | 'TENANT'>('LANDLORD');
-  const [email, setEmail] = useState('rahul.sharma@example.com');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +29,6 @@ export default function LoginPage() {
   const handleRoleChange = (newRole: 'LANDLORD' | 'TENANT') => {
     setRole(newRole);
     setError(null);
-    if (newRole === 'LANDLORD') {
-      setEmail('rahul.sharma@example.com');
-      setPassword('Password123!');
-    } else {
-      setEmail('amit.kumar@example.com');
-      setPassword('Password123!');
-    }
-  };
-
-  const handleFillDemo = (targetRole: 'LANDLORD' | 'TENANT') => {
-    handleRoleChange(targetRole);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +84,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">Welcome to RentFlow</h1>
           <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-            Sign in to manage your properties, pay rent, or download official HRA tax receipts.
+            Sign in to manage your properties, collect rent, or view payment receipts.
           </p>
 
           {/* Role Switcher Tabs */}
@@ -136,21 +123,21 @@ export default function LoginPage() {
             <span className="font-bold text-white flex items-center gap-1.5">
               {role === 'LANDLORD' ? (
                 <>
-                  <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Landlord Overview & Portal
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Landlord Portal
                 </>
               ) : (
                 <>
-                  <User className="w-3.5 h-3.5 text-teal-400" /> Tenant Portal & UPI Pay
+                  <User className="w-3.5 h-3.5 text-teal-400" /> Resident Portal
                 </>
               )}
             </span>
             <span className="text-[11px] text-slate-400">
-              {role === 'LANDLORD' ? 'Owner / Manager' : 'Resident / Renter'}
+              {role === 'LANDLORD' ? 'Property Owner' : 'Verified Resident'}
             </span>
           </div>
 
           {error && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-rose-300 text-xs animate-shake">
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-rose-300 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -168,7 +155,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your-email@example.com"
+                  placeholder={role === 'LANDLORD' ? 'owner@example.com' : 'tenant@example.com'}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/70 border border-slate-700/80 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition font-medium"
                 />
               </div>
@@ -179,9 +166,6 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Password
                 </label>
-                <span className="text-[11px] text-slate-500">
-                  Default test: <code className="text-emerald-400 font-mono">Password123!</code>
-                </span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -224,52 +208,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* 1-Tap Quick Demo Autofill Helpers */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1 font-semibold text-slate-300">
-                <Sparkles className="w-3 h-3 text-emerald-400" /> Quick Demo 1-Tap Access:
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('LANDLORD')}
-                className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-0.5 ${
-                  role === 'LANDLORD'
-                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                    : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <span className="text-[11px] font-bold flex items-center gap-1">
-                  🏢 Rahul (Owner)
-                  {role === 'LANDLORD' && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono truncate">
-                  rahul.sharma@example.com
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleFillDemo('TENANT')}
-                className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-0.5 ${
-                  role === 'TENANT'
-                    ? 'bg-teal-950/40 border-teal-500/40 text-teal-300'
-                    : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                <span className="text-[11px] font-bold flex items-center gap-1">
-                  🏠 Amit (Tenant)
-                  {role === 'TENANT' && <CheckCircle2 className="w-3 h-3 text-teal-400 shrink-0" />}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono truncate">
-                  amit.kumar@example.com
-                </span>
-              </button>
-            </div>
-          </div>
-
           {/* Registration & Tenant Help */}
           <div className="pt-2 text-center space-y-2 text-xs">
             <p className="text-slate-400">
@@ -282,7 +220,7 @@ export default function LoginPage() {
               </Link>
             </p>
             <p className="text-[11px] text-slate-500 leading-tight">
-              Are you a tenant? Your owner creates your flat access. Simply ask your landlord for your registered email address.
+              Are you a tenant? Your landlord registers your email upon lease creation. Contact your owner if you need access.
             </p>
           </div>
         </div>

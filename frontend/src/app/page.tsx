@@ -30,13 +30,13 @@ import {
   Layers,
   Shield,
   HelpCircle,
+  MessageCircle,
 } from 'lucide-react';
-import { getAuthToken, getStoredUser, setAuthToken, setStoredUser, apiRequest } from '@/lib/api';
+import { getAuthToken, getStoredUser } from '@/lib/api';
 
 export default function HomePage() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [loggingInRole, setLoggingInRole] = useState<'LANDLORD' | 'TENANT' | null>(null);
   const [activePreviewTab, setActivePreviewTab] = useState<'LANDLORD' | 'TENANT'>('LANDLORD');
 
   useEffect(() => {
@@ -53,34 +53,6 @@ export default function HomePage() {
     }
   }, [router]);
 
-  const quickDemoLogin = async (role: 'LANDLORD' | 'TENANT') => {
-    setLoggingInRole(role);
-    try {
-      const email = role === 'LANDLORD' ? 'rahul.sharma@example.com' : 'amit.kumar@example.com';
-      const password = 'Password123!';
-
-      const res = await apiRequest<{ accessToken: string; user: any }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (res.data) {
-        setAuthToken(res.data.accessToken);
-        setStoredUser(res.data.user);
-        if (role === 'LANDLORD') {
-          router.push('/dashboard');
-        } else {
-          router.push('/tenant');
-        }
-      }
-    } catch (err) {
-      console.error('Demo login failed:', err);
-      router.push('/login');
-    } finally {
-      setLoggingInRole(null);
-    }
-  };
-
   if (checkingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
@@ -88,7 +60,7 @@ export default function HomePage() {
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 animate-pulse">
             <Building2 className="w-6 h-6 text-white" />
           </div>
-          <p className="text-sm font-semibold text-slate-300">Opening RentFlow App...</p>
+          <p className="text-sm font-semibold text-slate-300">Opening RentFlow...</p>
         </div>
       </div>
     );
@@ -98,7 +70,6 @@ export default function HomePage() {
     <>
       {/* ========================================================================= */}
       {/* 1. NATIVE MOBILE APP VIEW (< md screens)                                 */}
-      {/* Designed for phone users like PhonePe, Cred, Uber, Airbnb                 */}
       {/* ========================================================================= */}
       <div className="md:hidden min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 pb-8 selection:bg-emerald-500 selection:text-white">
         {/* Top App Bar */}
@@ -113,11 +84,11 @@ export default function HomePage() {
                   RentFlow
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                  App
+                  India
                 </span>
               </div>
               <span className="text-[11px] text-slate-400 font-medium block mt-0.5">
-                Rental & Maintenance Platform
+                Smart Rental Management
               </span>
             </div>
           </div>
@@ -152,7 +123,7 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Direct UPI payment, WhatsApp reminder slips, Section 10(13A) HRA receipts, and live repair tickets.
+              Direct UPI payments, WhatsApp reminder slips, verified rent receipts, and live repair tickets.
             </p>
           </div>
 
@@ -172,12 +143,12 @@ export default function HomePage() {
 
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 flex items-center gap-3 shadow-md shadow-black/40">
               <div className="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0">
-                <Receipt className="w-5 h-5" />
+                <MessageCircle className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-white">WhatsApp & Tax Receipts</h4>
+                <h4 className="text-xs font-bold text-white">1-Tap WhatsApp Slips & Receipts</h4>
                 <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                  Pre-set WhatsApp reminder templates and annual HRA certificates.
+                  Send polite rent reminders and instant payment confirmation receipts.
                 </p>
               </div>
             </div>
@@ -189,75 +160,59 @@ export default function HomePage() {
               <div className="min-w-0 flex-1">
                 <h4 className="text-xs font-bold text-white">Live Repair Ticket Desk</h4>
                 <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                  Submit maintenance requests and track progress with live alerts.
+                  Submit maintenance requests and track progress with live updates.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom App Actions: Select Role & Launch */}
+        {/* Bottom App Actions: Real Sign In & Register */}
         <div className="space-y-3 pt-2">
-          {/* Option A: Enter as Landlord */}
-          <button
-            onClick={() => quickDemoLogin('LANDLORD')}
-            disabled={loggingInRole !== null}
+          <Link
+            href="/login"
             className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 active:scale-98 text-slate-950 font-bold p-3.5 rounded-2xl shadow-xl shadow-emerald-500/20 transition flex items-center justify-between"
           >
             <div className="flex items-center gap-3 text-left">
               <div className="w-8 h-8 rounded-xl bg-slate-950/20 flex items-center justify-center text-slate-950 font-black">
-                <Building2 className="w-4 h-4" />
+                <UserCheck className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-xs font-black block leading-tight">
-                  {loggingInRole === 'LANDLORD' ? 'Opening Landlord Portal...' : 'Try Landlord Demo'}
+                  Sign In to Your Account
                 </span>
                 <span className="text-[10px] text-slate-900/80 font-semibold block">
-                  Rahul Sharma (2 Units, ₹42,000/mo)
+                  For Property Owners & Residents
                 </span>
               </div>
             </div>
             <ArrowRight className="w-4 h-4 text-slate-950 shrink-0" />
-          </button>
+          </Link>
 
-          {/* Option B: Enter as Tenant */}
-          <button
-            onClick={() => quickDemoLogin('TENANT')}
-            disabled={loggingInRole !== null}
+          <Link
+            href="/register"
             className="w-full bg-slate-900 hover:bg-slate-800 active:scale-98 border border-slate-700/80 text-white font-bold p-3.5 rounded-2xl transition flex items-center justify-between shadow-lg shadow-black/30"
           >
             <div className="flex items-center gap-3 text-left">
               <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-black">
-                <Home className="w-4 h-4" />
+                <Building2 className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-xs font-black block leading-tight">
-                  {loggingInRole === 'TENANT' ? 'Opening Tenant App...' : 'Try Tenant Demo App'}
+                  Create Landlord Account
                 </span>
                 <span className="text-[10px] text-slate-400 font-semibold block">
-                  Amit Kumar (Flat 302, UPI & HRA)
+                  Get started free in 2 minutes
                 </span>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-
-          {/* Bottom links */}
-          <div className="pt-2 flex items-center justify-center gap-4 text-[11px] text-slate-400">
-            <Link href="/login" className="hover:text-emerald-400 transition font-medium">
-              Custom Login
-            </Link>
-            <span>•</span>
-            <Link href="/register" className="hover:text-emerald-400 transition font-medium">
-              Create Landlord Account
-            </Link>
-          </div>
+          </Link>
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* 2. DESKTOP SAAS MARKETING VIEW (>= md screens)                            */}
-      {/* Professional SaaS presentation with live interactive interactive showcase   */}
       {/* ========================================================================= */}
       <div className="hidden md:block min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white font-sans selection:bg-emerald-500 selection:text-white">
         {/* Navigation Header */}
@@ -272,14 +227,14 @@ export default function HomePage() {
                   RentFlow
                 </span>
                 <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block">
-                  Rental & Maintenance SaaS
+                  Rental & Property Platform
                 </span>
               </div>
             </div>
 
             <nav className="flex items-center gap-8 text-xs font-semibold text-slate-300">
               <a href="#features" className="hover:text-white transition">Features</a>
-              <a href="#showcase" className="hover:text-white transition">Interactive Demo</a>
+              <a href="#showcase" className="hover:text-white transition">Product Preview</a>
               <a href="#how-it-works" className="hover:text-white transition">How It Works</a>
               <a href="#faq" className="hover:text-white transition">FAQ</a>
             </nav>
@@ -318,54 +273,39 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto">
-              Say goodbye to awkward calls, scattered WhatsApp receipts, and Excel sheets. RentFlow powers instant zero-fee UPI collections, automated WhatsApp invoices, Section 10(13A) HRA receipts, and live repair tracking.
+              Say goodbye to awkward calls, scattered WhatsApp receipts, and Excel sheets. RentFlow powers instant zero-fee UPI collections, automated WhatsApp invoices, verified payment receipts, and live repair tracking.
             </p>
 
-            {/* Quick 1-Click Interactive Demo Buttons */}
+            {/* Clean Action Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/register"
-                className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-sm shadow-xl shadow-emerald-950/40 transition flex items-center justify-center gap-2.5 group"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-sm shadow-xl shadow-emerald-950/40 transition flex items-center justify-center gap-2.5 group"
               >
                 <span>Create Free Landlord Account</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition" />
               </Link>
 
-              <button
-                onClick={() => quickDemoLogin('LANDLORD')}
-                disabled={loggingInRole !== null}
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-200 font-bold text-sm border border-slate-700/80 transition flex items-center justify-center gap-2.5 group shadow-lg"
+              <Link
+                href="/login"
+                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-200 font-bold text-sm border border-slate-700/80 transition flex items-center justify-center gap-2.5 group shadow-lg"
               >
-                <Building2 className="w-4 h-4 text-emerald-400" />
-                <span>
-                  {loggingInRole === 'LANDLORD' ? 'Opening Landlord Portal...' : 'Try Landlord Demo'}
-                </span>
+                <UserCheck className="w-4 h-4 text-emerald-400" />
+                <span>Sign In to Portal</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
-              </button>
-
-              <button
-                onClick={() => quickDemoLogin('TENANT')}
-                disabled={loggingInRole !== null}
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-200 font-bold text-sm border border-slate-700/80 transition flex items-center justify-center gap-2.5 group shadow-lg"
-              >
-                <Smartphone className="w-4 h-4 text-teal-400" />
-                <span>
-                  {loggingInRole === 'TENANT' ? 'Launching Tenant App...' : 'Try Tenant Demo'}
-                </span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
-              </button>
+              </Link>
             </div>
 
             {/* Trust Badges */}
             <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
               <span className="flex items-center gap-1.5 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 0% Gateway Fees (100% to your bank)
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> 0% Gateway Fees (100% directly to your bank)
               </span>
               <span className="flex items-center gap-1.5 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Section 10(13A) HRA Receipts
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Instant 1-Tap WhatsApp Slips
               </span>
               <span className="flex items-center gap-1.5 font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Pre-seeded live demo accounts
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Verified Rent Payment Receipts
               </span>
             </div>
           </div>
@@ -380,14 +320,14 @@ export default function HomePage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      Live Product Preview
+                      Product Preview
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                      Interactive Mockup
+                      Feature Tour
                     </span>
                   </div>
                   <h3 className="text-xl font-bold text-white mt-1">
-                    See RentFlow in Action for Both Sides
+                    See How RentFlow Works for Both Sides
                   </h3>
                 </div>
 
@@ -401,7 +341,7 @@ export default function HomePage() {
                     }`}
                   >
                     <Building2 className="w-4 h-4" />
-                    <span>Landlord Overview Portal</span>
+                    <span>Landlord Portal</span>
                   </button>
                   <button
                     onClick={() => setActivePreviewTab('TENANT')}
@@ -412,7 +352,7 @@ export default function HomePage() {
                     }`}
                   >
                     <Home className="w-4 h-4" />
-                    <span>Tenant Mobile Portal</span>
+                    <span>Tenant Portal</span>
                   </button>
                 </div>
               </div>
@@ -425,11 +365,11 @@ export default function HomePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                          Total Oct Rent
+                          Total Expected Rent
                         </span>
                         <div className="text-2xl font-black text-white mt-1">₹42,000</div>
                         <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 mt-1">
-                          <CheckCircle2 className="w-3 h-3" /> 100% Expected
+                          <CheckCircle2 className="w-3 h-3" /> Across 2 Units
                         </span>
                       </div>
 
@@ -449,44 +389,47 @@ export default function HomePage() {
                         </span>
                         <div className="text-2xl font-black text-white mt-1">100%</div>
                         <span className="text-[10px] text-slate-400 font-medium block mt-1">
-                          2 Units Occupied
+                          2 of 2 Units Occupied
                         </span>
                       </div>
 
                       <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                          Active Repair Tickets
+                          Pending Balance
                         </span>
-                        <div className="text-2xl font-black text-amber-400 mt-1">1 Open</div>
-                        <span className="text-[10px] text-amber-400/80 font-medium block mt-1">
-                          Plumbing (Bathroom tap)
+                        <div className="text-2xl font-black text-amber-400 mt-1">₹18,000</div>
+                        <span className="text-[10px] text-amber-400 font-semibold flex items-center gap-1 mt-1">
+                          <Clock className="w-3 h-3" /> 1 Due Invoice
                         </span>
                       </div>
                     </div>
 
-                    {/* Table Preview */}
-                    <div className="rounded-2xl bg-slate-950/80 border border-slate-800 overflow-hidden">
-                      <div className="px-5 py-3 border-b border-slate-800/80 flex items-center justify-between text-xs font-bold text-slate-300">
-                        <span>Current Units & Invoices</span>
-                        <span className="text-[11px] text-emerald-400 font-mono">2 Properties Active</span>
+                    {/* Unit Bills Showcase */}
+                    <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-950/40">
+                      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">
+                          Active Property Collections
+                        </span>
+                        <span className="text-[11px] text-slate-400">Sunshine Heights</span>
                       </div>
-                      <div className="divide-y divide-slate-800/60 text-xs">
+
+                      <div className="divide-y divide-slate-800/80 text-xs">
                         <div className="px-5 py-3.5 flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
                               302
                             </div>
                             <div>
-                              <div className="font-bold text-white">Flat 302, Green Acres</div>
+                              <div className="font-bold text-white">Flat 302, Sunshine Heights</div>
                               <div className="text-[11px] text-slate-400">Tenant: Amit Kumar • ₹18,000/mo</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                              Due in 3 Days
+                              Payment Due
                             </span>
-                            <span className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-[11px] flex items-center gap-1">
-                              <Send className="w-3 h-3 text-emerald-400" /> 1-Click WhatsApp
+                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 font-semibold text-[11px] flex items-center gap-1 border border-emerald-500/20">
+                              <MessageCircle className="w-3 h-3" /> 1-Tap WhatsApp Reminder
                             </span>
                           </div>
                         </div>
@@ -506,7 +449,7 @@ export default function HomePage() {
                               Paid via UPI
                             </span>
                             <span className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-[11px] flex items-center gap-1">
-                              <Download className="w-3 h-3 text-teal-400" /> Receipt Ready
+                              <Download className="w-3 h-3 text-teal-400" /> Receipt Verified
                             </span>
                           </div>
                         </div>
@@ -515,14 +458,14 @@ export default function HomePage() {
 
                     <div className="flex items-center justify-between pt-2">
                       <span className="text-xs text-slate-400">
-                        Want to test the full live dashboard?
+                        Ready to automate your properties?
                       </span>
-                      <button
-                        onClick={() => quickDemoLogin('LANDLORD')}
+                      <Link
+                        href="/login"
                         className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 underline underline-offset-4"
                       >
-                        Launch Rahul Sharma&apos;s Landlord Overview <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                        Sign In to Landlord Dashboard <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                   </div>
                 ) : (
@@ -538,7 +481,7 @@ export default function HomePage() {
                           <span className="text-xs text-slate-400">Landlord: Rahul Sharma</span>
                         </div>
                         <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                          Due 1st of Month
+                          Due 5th of Month
                         </span>
                       </div>
 
@@ -555,31 +498,30 @@ export default function HomePage() {
 
                       {/* Action buttons */}
                       <div className="space-y-2.5">
-                        <button className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                        <div className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
                           <QrCode className="w-4 h-4" />
-                          <span>Pay ₹18,000 via UPI (GPay / PhonePe / Paytm)</span>
-                        </button>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <button className="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5 hover:text-white">
-                            <FileText className="w-3.5 h-3.5 text-teal-400" />
-                            <span>HRA Tax Proof</span>
-                          </button>
-                          <button className="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 flex items-center justify-center gap-1.5 hover:text-white">
-                            <Wrench className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Pay via UPI (GPay / PhonePe / Paytm)</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-bold flex items-center justify-center gap-1.5">
+                            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Rent Receipts</span>
+                          </div>
+                          <div className="py-2.5 px-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-bold flex items-center justify-center gap-1.5">
+                            <Wrench className="w-3.5 h-3.5 text-amber-400" />
                             <span>Request Repair</span>
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-center pt-2">
-                      <button
-                        onClick={() => quickDemoLogin('TENANT')}
+                      <Link
+                        href="/login"
                         className="text-xs font-bold text-teal-400 hover:text-teal-300 inline-flex items-center gap-1 underline underline-offset-4"
                       >
-                        Launch Amit Kumar&apos;s Live Tenant Portal <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                        Sign In to Tenant Portal <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                   </div>
                 )}
@@ -598,8 +540,8 @@ export default function HomePage() {
               <h2 className="text-3xl sm:text-4xl font-black text-white">
                 Everything You Need, Nothing You Don&apos;t
               </h2>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                We eliminated confusing accounting jargon and complex ERP menus. RentFlow does exactly what Indian landlords and tenants need.
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Streamline rent collection, repairs, and tenant relationships across your properties.
               </p>
             </div>
 
@@ -628,9 +570,9 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center">
                   <Receipt className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Section 10(13A) HRA Receipts</h3>
+                <h3 className="text-lg font-bold text-white">Verified Rent Receipts</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Automatic rent receipts containing the Landlord&apos;s PAN. Tenants print 12-month consolidated declarations for office HR claims.
+                  Automatic payment receipts generated with every settlement. Tenants can view, print, or share receipts via WhatsApp anytime.
                 </p>
               </div>
 
@@ -640,7 +582,7 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-lg font-bold text-white">Live Repair Desk</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  No more forgotten repairs lost in WhatsApp chats. Tenants submit issues with photos and urgency tags for transparent resolution.
+                  No more forgotten repairs lost in WhatsApp chats. Tenants submit issues with urgency tags and category filters for transparent tracking.
                 </p>
               </div>
             </div>
@@ -658,28 +600,34 @@ export default function HomePage() {
               <p className="text-xs text-slate-400">No complex onboarding. Up and running in under 2 minutes.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3 relative">
-                <div className="text-3xl font-black text-emerald-500/40">01</div>
-                <h4 className="text-lg font-bold text-white">Add Property & Set Rent</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4 relative">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-black text-sm">
+                  1
+                </div>
+                <h4 className="text-lg font-bold text-white">Add Properties & Tenants</h4>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Enter your property name, flat numbers, monthly rent amount, and your UPI ID where rent should be deposited.
+                  Enter your property name, flat units, and tenant contact details with monthly rent amount and due day.
                 </p>
               </div>
 
-              <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3 relative">
-                <div className="text-3xl font-black text-emerald-500/40">02</div>
-                <h4 className="text-lg font-bold text-white">Add Tenant & Send Link</h4>
+              <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4 relative">
+                <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-teal-400 flex items-center justify-center font-black text-sm">
+                  2
+                </div>
+                <h4 className="text-lg font-bold text-white">Dispatch 1-Tap Reminders</h4>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Enter your tenant&apos;s name and phone number. RentFlow creates their portal and generates their rent slip with 1-click WhatsApp delivery.
+                  Generate monthly bills with 1 click. Tap &apos;Send WhatsApp&apos; to dispatch polite reminder slips directly to tenants.
                 </p>
               </div>
 
-              <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-3 relative">
-                <div className="text-3xl font-black text-emerald-500/40">03</div>
-                <h4 className="text-lg font-bold text-white">Rent Deposited & HRA Issued</h4>
+              <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4 relative">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-black text-sm">
+                  3
+                </div>
+                <h4 className="text-lg font-bold text-white">Rent Deposited & Receipts Issued</h4>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Tenant scans the QR or taps UPI. 100% of money hits your bank, and the tenant automatically gets their official HRA receipt.
+                  Tenant scans the QR or taps UPI. 100% of money hits your bank, and the tenant automatically gets their verified rent receipt.
                 </p>
               </div>
             </div>
@@ -700,10 +648,10 @@ export default function HomePage() {
               <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <HelpCircle className="w-4 h-4 text-emerald-400" />
-                  Is RentFlow really free to use?
+                  Is RentFlow free to use?
                 </h4>
                 <p className="text-xs text-slate-400 leading-relaxed pl-6">
-                  Yes! RentFlow is 100% free for landlords managing up to 5 rental units. There are no monthly fees and no setup costs.
+                  Yes! RentFlow offers a generous free tier for landlords managing their properties. There are no setup fees or hidden surprises.
                 </p>
               </div>
 
@@ -713,17 +661,17 @@ export default function HomePage() {
                   Are there any payment gateway charges on rent?
                 </h4>
                 <p className="text-xs text-slate-400 leading-relaxed pl-6">
-                  Zero charges! Unlike platforms that charge 1.5% - 2% gateway commissions, RentFlow uses direct Indian UPI (BHIM/GPay/PhonePe). The entire rent goes directly into your bank account.
+                  Zero charges! Unlike platforms that charge 1.5% - 2% gateway commissions, RentFlow uses direct Indian UPI (BHIM / GPay / PhonePe / Paytm). The full rent amount goes straight into your bank account.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <HelpCircle className="w-4 h-4 text-emerald-400" />
-                  Can tenants claim HRA tax exemption with RentFlow receipts?
+                  Can tenants download verified rent receipts?
                 </h4>
                 <p className="text-xs text-slate-400 leading-relaxed pl-6">
-                  Yes, absolutely. Rent receipts generated by RentFlow contain the Landlord&apos;s PAN, tenant details, rental property address, and payment transaction IDs compliant with Indian Income Tax Section 10(13A).
+                  Yes, absolutely. Once rent is recorded, verified digital rent receipts are generated automatically. Tenants can view, print, or share them on WhatsApp anytime.
                 </p>
               </div>
             </div>
@@ -737,7 +685,7 @@ export default function HomePage() {
               Ready to modernise your rental properties?
             </h2>
             <p className="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-              Join thousands of landlords who have replaced messy spreadsheets with RentFlow. Setup takes less than 2 minutes.
+              Join property owners across India who manage their flats with RentFlow. Setup takes less than 2 minutes.
             </p>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
@@ -758,7 +706,7 @@ export default function HomePage() {
           {/* Footer */}
           <footer className="pt-12 border-t border-white/10 text-center text-xs text-slate-500 space-y-2">
             <p>© {new Date().getFullYear()} RentFlow Platform. Modern Property & Rent Management for India.</p>
-            <p className="text-[11px] text-slate-600">Built with 100% Direct Bank UPI, Automated WhatsApp Reminders, and HRA Tax Compliance.</p>
+            <p className="text-[11px] text-slate-600">Built with 100% Direct Bank UPI, Automated WhatsApp Reminders, and Verified Digital Receipts.</p>
           </footer>
         </main>
       </div>
