@@ -24,29 +24,46 @@ export class TenantsService {
       },
     });
 
-    // Check if tenant with this phone already exists to avoid duplicate profiles
+    // Check if tenant with this phone or email already exists to avoid duplicate profiles
     const existing = await this.prisma.tenant.findFirst({
-      where: { phone: normalizedPhone },
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          ...(last10.length >= 10 ? [{ phone: { contains: last10 } }] : []),
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+        ],
+      },
     });
 
     if (existing) {
+      // Check if existingUser is already bound to another tenant
+      const userAlreadyBound = existingUser
+        ? await this.prisma.tenant.findUnique({ where: { userId: existingUser.id } })
+        : null;
+
       // Update details if email or name provided
       return this.prisma.tenant.update({
         where: { id: existing.id },
         data: {
           name: dto.name.trim(),
           email: normalizedEmail || existing.email,
-          ...(existingUser && !existing.userId ? { userId: existingUser.id } : {}),
+          ...(existingUser && !existing.userId && (!userAlreadyBound || userAlreadyBound.id === existing.id)
+            ? { userId: existingUser.id }
+            : {}),
         },
       });
     }
+
+    const userAlreadyBound = existingUser
+      ? await this.prisma.tenant.findUnique({ where: { userId: existingUser.id } })
+      : null;
 
     return this.prisma.tenant.create({
       data: {
         name: dto.name.trim(),
         phone: normalizedPhone,
         email: normalizedEmail,
-        ...(existingUser ? { userId: existingUser.id } : {}),
+        ...(existingUser && !userAlreadyBound ? { userId: existingUser.id } : {}),
       },
     });
   }

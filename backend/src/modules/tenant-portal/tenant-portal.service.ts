@@ -12,7 +12,16 @@ export class TenantPortalService {
   ) {}
 
 
-  async getDashboard(userId: string) {
+  private async resolveTenantWithActiveLease(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User account not found.');
+    }
+
+    const cleanPhone = user.phone ? user.phone.replace(/[^0-9]/g, '') : '';
+    const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : '';
+
+    // 1. Direct tenant profile check
     let tenant = await this.prisma.tenant.findUnique({
       where: { userId },
       include: {
@@ -54,63 +63,138 @@ export class TenantPortalService {
       },
     });
 
-    if (!tenant) {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (user) {
-        const cleanPhone = user.phone ? user.phone.replace(/[^0-9]/g, '') : '';
-        const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : '';
-
-        const matchingTenant = await this.prisma.tenant.findFirst({
-          where: {
-            OR: [
-              ...(last10 ? [{ phone: { contains: last10 } }] : []),
-              { email: user.email },
-            ],
-            userId: null,
-          },
-        });
-
-        if (matchingTenant) {
-          await this.prisma.tenant.update({
-            where: { id: matchingTenant.id },
-            data: { userId: user.id },
-          });
-
-          return this.getDashboard(userId);
-        }
-
-        return {
-          hasActiveLease: false,
-          tenant: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone || '',
-          },
-          unit: null,
-          property: null,
-          landlord: null,
-          lease: null,
-          currentBill: null,
-          upiUrl: null,
-          invoices: [],
-          message: 'No active lease agreement found under your profile.',
-        };
-      }
-
-      throw new NotFoundException('Tenant profile not found for this account.');
+    if (tenant && tenant.leases.length > 0) {
+      return { tenant, user };
     }
 
-    const activeLease = tenant.leases[0];
+    // 2. If no active lease on current profile, search for any tenant record matching phone or email with active lease
+    const matchingTenantWithLease = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          ...(last10 ? [{ phone: { contains: last10 } }] : []),
+          { email: user.email },
+        ],
+        leases: {
+          some: { status: LeaseStatus.ACTIVE },
+        },
+      },
+      include: {
+        leases: {
+          where: { status: LeaseStatus.ACTIVE },
+          include: {
+            unit: {
+              include: {
+                property: {
+                  include: {
+                    owner: {
+                      select: {
+                        name: true,
+                        email: true,
+                        phone: true,
+                        upiId: true,
+                        panNumber: true,
+                        bankName: true,
+                        bankAccountNumber: true,
+                        bankIfsc: true,
+                        qrImageUrl: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            invoices: {
+              include: {
+                items: true,
+                payments: {
+                  orderBy: { paymentDate: 'desc' },
+                },
+              },
+              orderBy: { billingMonth: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (matchingTenantWithLease) {
+      // Unlink previous empty profile if any to prevent unique constraint conflict
+      if (tenant && tenant.id !== matchingTenantWithLease.id) {
+        await this.prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { userId: null },
+        });
+      }
+
+      // Link the active lease tenant to this user
+      const linkedTenant = await this.prisma.tenant.update({
+        where: { id: matchingTenantWithLease.id },
+        data: { userId: user.id },
+        include: {
+          leases: {
+            where: { status: LeaseStatus.ACTIVE },
+            include: {
+              unit: {
+                include: {
+                  property: {
+                    include: {
+                      owner: {
+                        select: {
+                          name: true,
+                          email: true,
+                          phone: true,
+                          upiId: true,
+                          panNumber: true,
+                          bankName: true,
+                          bankAccountNumber: true,
+                          bankIfsc: true,
+                          qrImageUrl: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              invoices: {
+                include: {
+                  items: true,
+                  payments: {
+                    orderBy: { paymentDate: 'desc' },
+                  },
+                },
+                orderBy: { billingMonth: 'desc' },
+              },
+            },
+          },
+        },
+      });
+
+      return { tenant: linkedTenant, user };
+    }
+
+    return { tenant, user };
+  }
+
+  async getDashboard(userId: string) {
+    const { tenant, user } = await this.resolveTenantWithActiveLease(userId);
+
+    const activeLease = tenant?.leases?.[0];
     if (!activeLease) {
       return {
-        tenant: {
-          id: tenant.id,
-          name: tenant.name,
-          email: tenant.email,
-          phone: tenant.phone,
-        },
         hasActiveLease: false,
+        tenant: {
+          id: user.id,
+          name: user.name || tenant?.name || 'Tenant',
+          email: user.email || tenant?.email || '',
+          phone: user.phone || tenant?.phone || '',
+        },
+        unit: null,
+        property: null,
+        landlord: null,
+        lease: null,
+        currentBill: null,
+        upiUrl: null,
+        invoices: [],
         message: 'No active lease agreement found under your profile.',
       };
     }
@@ -222,23 +306,9 @@ export class TenantPortalService {
   }
 
   async reportPayment(userId: string, invoiceId: string, dto: ReportPaymentDto) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { userId },
-      include: {
-        leases: {
-          where: { status: LeaseStatus.ACTIVE },
-          include: {
-            unit: {
-              include: {
-                property: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const { tenant } = await this.resolveTenantWithActiveLease(userId);
 
-    if (!tenant || tenant.leases.length === 0) {
+    if (!tenant || !tenant.leases || tenant.leases.length === 0) {
       throw new NotFoundException('Active lease agreement not found.');
     }
 

@@ -28,6 +28,8 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  RefreshCw,
+  ArrowRight,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 
@@ -105,6 +107,7 @@ export default function TenantHomePage() {
   const [reportSuccess, setReportSuccess] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
   const [qrError, setQrError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -205,14 +208,97 @@ export default function TenantHomePage() {
 
   if (!data || !data.hasActiveLease) {
     return (
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-8 text-center max-w-lg mx-auto shadow-sm my-12">
-        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200">
-          <Home className="w-6 h-6" />
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-9 text-center max-w-xl mx-auto shadow-sm my-8 space-y-6">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-sm">
+          <Home className="w-7 h-7" />
         </div>
-        <h3 className="text-lg font-bold text-slate-900 mb-1">No Active Lease Found</h3>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Your account is not linked to an active rental flat. Please ask your landlord to add your phone number ({data?.tenant?.phone || 'registered number'}) to your lease agreement.
-        </p>
+
+        <div className="space-y-1.5">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+            <span>Rental Flat Not Linked</span>
+          </span>
+          <h3 className="text-xl font-black text-slate-900">No Active Lease Found</h3>
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+            Your tenant account is not linked to an active flat yet. Follow the steps below based on your role:
+          </p>
+        </div>
+
+        {/* Profile Details Card */}
+        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 text-left text-xs space-y-2">
+          <div className="font-bold text-slate-700 flex items-center justify-between">
+            <span>Your Profile Details</span>
+            <span className="text-[10px] text-slate-400 font-medium">Logged In</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 pt-1">
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] text-slate-400 block font-medium">Mobile Number</span>
+              <span className="font-bold text-slate-800">{data?.tenant?.phone || 'Not linked'}</span>
+            </div>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] text-slate-400 block font-medium">Email / Name</span>
+              <span className="font-bold text-slate-800 truncate block">{data?.tenant?.email || data?.tenant?.name || 'Tenant'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2 Scenarios */}
+        <div className="grid grid-cols-1 gap-3 text-left">
+          {/* Scenario A: For Tenants */}
+          <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 text-xs space-y-1.5">
+            <div className="font-bold text-emerald-900 flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black">1</span>
+              <span>If you are a Tenant:</span>
+            </div>
+            <p className="text-slate-600 pl-6.5 leading-relaxed text-[11px]">
+              Ask your landlord to create a lease in their RentFlow dashboard using your mobile number (<span className="font-bold text-slate-800">{data?.tenant?.phone || 'registered number'}</span>). Once they activate it, click below to refresh!
+            </p>
+          </div>
+
+          {/* Scenario B: For Landlords */}
+          <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/80 text-xs space-y-2">
+            <div className="font-bold text-blue-900 flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black">2</span>
+              <span>If you are testing as a Landlord:</span>
+            </div>
+            <p className="text-slate-600 pl-6.5 leading-relaxed text-[11px]">
+              Go to your Landlord Dashboard, add a property/unit, and create a lease agreement under Tenants.
+            </p>
+            <div className="pl-6.5 pt-1">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition"
+              >
+                <span>Go to Landlord Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={async () => {
+              setRefreshing(true);
+              await fetchDashboard();
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{refreshing ? 'Checking...' : 'Check Again / Refresh'}</span>
+          </button>
+
+          <Link
+            href="/login"
+            className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center justify-center"
+          >
+            Switch Account
+          </Link>
+        </div>
       </div>
     );
   }
