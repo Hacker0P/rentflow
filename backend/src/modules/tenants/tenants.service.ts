@@ -219,20 +219,16 @@ export class TenantsService {
       throw new NotFoundException(`Tenant is not associated with any of your properties.`);
     }
 
-    // Free up any units currently occupied under active leases for this landlord
-    const activeUnitsToFree = landlordLeases
-      .filter((l) => l.status === LeaseStatus.ACTIVE)
-      .map((l) => l.unitId);
+    // Safety: Landlord can ONLY delete the tenant after the lease is ended
+    const activeLease = landlordLeases.find((l) => l.status === LeaseStatus.ACTIVE);
+    if (activeLease) {
+      throw new BadRequestException(
+        `Cannot delete tenant while their lease is active (Unit ${activeLease.unit.unitNumber}). Please click "End Lease" first.`,
+      );
+    }
 
     // Delete in atomic transaction
     return this.prisma.$transaction(async (tx) => {
-      // 1. Free any occupied units back to VACANT
-      if (activeUnitsToFree.length > 0) {
-        await tx.unit.updateMany({
-          where: { id: { in: activeUnitsToFree } },
-          data: { status: UnitStatus.VACANT },
-        });
-      }
 
       const leaseIds = landlordLeases.map((l) => l.id);
       const invoiceIds = landlordLeases.flatMap((l) => l.invoices.map((i) => i.id));
