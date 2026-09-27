@@ -186,8 +186,10 @@ export default function TenantHomePage() {
 
   const { tenant, unit, property, landlord, lease, currentBill, upiUrl } = data;
 
+  const localQr = typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null;
   const qrCodeUrl =
     landlord.qrImageUrl ||
+    localQr ||
     (upiUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}` : '');
 
   return (
@@ -456,7 +458,7 @@ export default function TenantHomePage() {
                       height={180}
                       className="rounded-xl object-contain max-h-[200px]"
                     />
-                    {landlord.qrImageUrl && (
+                    {(landlord.qrImageUrl || localQr) && (
                       <span className="mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Payment QR
                       </span>

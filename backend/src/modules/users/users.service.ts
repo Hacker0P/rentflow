@@ -44,7 +44,9 @@ export class UsersService {
         ...(data.bankName !== undefined ? { bankName: data.bankName?.trim() || null } : {}),
         ...(data.bankAccountNumber !== undefined ? { bankAccountNumber: data.bankAccountNumber?.trim() || null } : {}),
         ...(data.bankIfsc !== undefined ? { bankIfsc: data.bankIfsc?.trim().toUpperCase() || null } : {}),
-        ...(data.qrImageUrl !== undefined ? { qrImageUrl: data.qrImageUrl || null } : {}),
+        ...(data.qrImageUrl !== undefined || (data as any).qrimageurl !== undefined
+          ? { qrImageUrl: data.qrImageUrl || (data as any).qrimageurl || null }
+          : {}),
       },
     });
 

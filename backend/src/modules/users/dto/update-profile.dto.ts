@@ -39,4 +39,8 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   qrImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  qrimageurl?: string;
 }

@@ -72,7 +72,8 @@ export default function SettingsPage() {
         setBankName(res.data.bankName || '');
         setBankAccountNumber(res.data.bankAccountNumber || '');
         setBankIfsc(res.data.bankIfsc || '');
-        setQrImageUrl(res.data.qrImageUrl || '');
+        const localQr = typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null;
+        setQrImageUrl(res.data.qrImageUrl || localQr || '');
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to load profile details');
@@ -119,6 +120,9 @@ export default function SettingsPage() {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
           setQrImageUrl(compressedDataUrl);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('rentflow_landlord_qr', compressedDataUrl);
+          }
           setErrorMessage('');
         }
       };
@@ -129,6 +133,9 @@ export default function SettingsPage() {
 
   const handleRemoveQrImage = () => {
     setQrImageUrl('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('rentflow_landlord_qr');
+    }
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -141,22 +148,53 @@ export default function SettingsPage() {
     setErrorMessage('');
 
     try {
-      const res = await apiRequest<ProfileData>('/users/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.trim() || undefined,
-          upiId: upiId.trim() || undefined,
-          panNumber: panNumber.trim().toUpperCase() || undefined,
-          bankName: bankName.trim() || undefined,
-          bankAccountNumber: bankAccountNumber.trim() || undefined,
-          bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
-          qrImageUrl: qrImageUrl || '',
-        }),
-      });
+      // Immediate local caching for instant mobile responsiveness
+      if (typeof window !== 'undefined') {
+        if (qrImageUrl) {
+          localStorage.setItem('rentflow_landlord_qr', qrImageUrl);
+        } else {
+          localStorage.removeItem('rentflow_landlord_qr');
+        }
+      }
 
-      if (res.data) {
-        setProfile(res.data);
+      let res;
+      try {
+        res = await apiRequest<ProfileData>('/users/profile', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: name.trim(),
+            phone: phone.trim() || undefined,
+            upiId: upiId.trim() || undefined,
+            panNumber: panNumber.trim().toUpperCase() || undefined,
+            bankName: bankName.trim() || undefined,
+            bankAccountNumber: bankAccountNumber.trim() || undefined,
+            bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
+            qrImageUrl: qrImageUrl || '',
+          }),
+        });
+      } catch (patchErr: any) {
+        // Fallback if backend is still deploying with the new qrImageUrl field
+        const errMsg = String(patchErr?.message || '');
+        if (errMsg.toLowerCase().includes('qrimageurl')) {
+          res = await apiRequest<ProfileData>('/users/profile', {
+            method: 'PATCH',
+            body: JSON.stringify({
+              name: name.trim(),
+              phone: phone.trim() || undefined,
+              upiId: upiId.trim() || undefined,
+              panNumber: panNumber.trim().toUpperCase() || undefined,
+              bankName: bankName.trim() || undefined,
+              bankAccountNumber: bankAccountNumber.trim() || undefined,
+              bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
+            }),
+          });
+        } else {
+          throw patchErr;
+        }
+      }
+
+      if (res && res.data) {
+        setProfile({ ...res.data, qrImageUrl: qrImageUrl || res.data.qrImageUrl });
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4500);
       }
