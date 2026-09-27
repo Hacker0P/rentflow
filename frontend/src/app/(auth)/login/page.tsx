@@ -136,7 +136,7 @@ export default function LoginPage() {
             <span className="font-bold text-white flex items-center gap-1.5">
               {role === 'LANDLORD' ? (
                 <>
-                  <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Landlord Command Center
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" /> Landlord Overview & Portal
                 </>
               ) : (
                 <>

@@ -210,7 +210,7 @@ export default function HomePage() {
               </div>
               <div>
                 <span className="text-xs font-black block leading-tight">
-                  {loggingInRole === 'LANDLORD' ? 'Opening Command Center...' : 'Try Landlord Demo Portal'}
+                  {loggingInRole === 'LANDLORD' ? 'Opening Landlord Portal...' : 'Try Landlord Demo'}
                 </span>
                 <span className="text-[10px] text-slate-900/80 font-semibold block">
                   Rahul Sharma (2 Units, ₹42,000/mo)
@@ -338,7 +338,7 @@ export default function HomePage() {
               >
                 <Building2 className="w-4 h-4 text-emerald-400" />
                 <span>
-                  {loggingInRole === 'LANDLORD' ? 'Launching Command Center...' : 'Try Landlord Demo'}
+                  {loggingInRole === 'LANDLORD' ? 'Opening Landlord Portal...' : 'Try Landlord Demo'}
                 </span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
               </button>
@@ -401,7 +401,7 @@ export default function HomePage() {
                     }`}
                   >
                     <Building2 className="w-4 h-4" />
-                    <span>Landlord Command Center</span>
+                    <span>Landlord Overview Portal</span>
                   </button>
                   <button
                     onClick={() => setActivePreviewTab('TENANT')}
@@ -521,7 +521,7 @@ export default function HomePage() {
                         onClick={() => quickDemoLogin('LANDLORD')}
                         className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 underline underline-offset-4"
                       >
-                        Launch Rahul Sharma&apos;s Command Center <ArrowRight className="w-3.5 h-3.5" />
+                        Launch Rahul Sharma&apos;s Landlord Overview <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
