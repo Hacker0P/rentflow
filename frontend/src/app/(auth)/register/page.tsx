@@ -18,6 +18,7 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import { apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
 
@@ -38,6 +39,11 @@ function RegisterContent() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Google Modal
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState('');
+  const [googleName, setGoogleName] = useState('');
 
   useEffect(() => {
     const roleParam = searchParams.get('role')?.toUpperCase();
@@ -84,30 +90,65 @@ function RegisterContent() {
         }),
       });
 
-      setAuthToken(res.data.accessToken);
-      setStoredUser(res.data.user);
-
-      if (rememberMe) {
-        localStorage.setItem(
-          'rentflow_remembered_account',
-          JSON.stringify({
-            name: res.data.user.name,
-            email: res.data.user.email,
-            phone: res.data.user.phone || (phoneNumber ? `+91 ${phoneNumber.slice(-10)}` : null),
-            role: res.data.user.role,
-          })
-        );
-      }
-
-      if (res.data.user?.role === 'TENANT') {
-        router.push('/tenant');
-      } else {
-        router.push('/dashboard');
-      }
+      finishRegister(res.data.accessToken, res.data.user);
     } catch (err: any) {
       setError(err.message || 'Registration failed. An account with this email or phone may already exist.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleRegister = async (customEmail?: string, customName?: string) => {
+    const targetEmail = customEmail || googleEmail.trim();
+    const targetName = customName || googleName.trim() || (role === 'LANDLORD' ? 'Landlord' : 'Tenant');
+
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setError('Please enter a valid Google email address');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await apiRequest<{ accessToken: string; user: any }>('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: targetEmail.toLowerCase(),
+          name: targetName,
+          role,
+        }),
+      });
+
+      setShowGoogleModal(false);
+      finishRegister(res.data.accessToken, res.data.user);
+    } catch (err: any) {
+      setError(err.message || 'Google account creation failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const finishRegister = (accessToken: string, user: any) => {
+    setAuthToken(accessToken);
+    setStoredUser(user);
+
+    if (rememberMe) {
+      localStorage.setItem(
+        'rentflow_remembered_account',
+        JSON.stringify({
+          name: user.name,
+          email: user.email,
+          phone: user.phone || (phoneNumber ? `+91 ${phoneNumber.slice(-10)}` : null),
+          role: user.role,
+        })
+      );
+    }
+
+    if (user?.role === 'TENANT') {
+      router.push('/tenant');
+    } else {
+      router.push('/dashboard');
     }
   };
 
@@ -137,7 +178,7 @@ function RegisterContent() {
       </header>
 
       {/* ========================================================================= */}
-      {/* 1. Top Visual Hero Banner (Dynamic based on selected role)                */}
+      {/* 1. Top Visual Hero Banner                                                 */}
       {/* ========================================================================= */}
       <div className="relative w-full max-w-md mx-auto pt-5 pb-4 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
         {/* Ambient Glows */}
@@ -353,10 +394,11 @@ function RegisterContent() {
             <button
               type="button"
               onClick={() => {
-                setError('Google Sign-Up is enabled. Fill in your details above for instant account setup.');
+                setError(null);
+                setShowGoogleModal(true);
               }}
               title="Sign up with Google"
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group hover:border-emerald-300"
             >
               <svg className="w-5 h-5 group-hover:scale-105 transition" viewBox="0 0 24 24">
                 <path
@@ -381,7 +423,7 @@ function RegisterContent() {
             <Link
               href="/login"
               title="Sign In Instead"
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group text-emerald-600 hover:text-emerald-700"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group text-emerald-600 hover:text-emerald-700 hover:border-emerald-300"
             >
               <Mail className="w-5 h-5 group-hover:scale-105 transition" />
             </Link>
@@ -427,6 +469,113 @@ function RegisterContent() {
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3. Google Sign-Up Modal                                                   */}
+      {/* ========================================================================= */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 relative text-slate-900 animate-in zoom-in-95">
+            <button
+              onClick={() => setShowGoogleModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:bg-slate-100 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Google Header */}
+            <div className="text-center space-y-1 pt-1">
+              <svg className="w-8 h-8 mx-auto" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <h3 className="text-base font-bold text-slate-900">Sign up with Google</h3>
+              <p className="text-xs text-slate-500">
+                Registering as <span className="font-bold text-emerald-700">{role === 'LANDLORD' ? 'Landlord' : 'Tenant'}</span>
+              </p>
+            </div>
+
+            {/* Quick 1-Tap Google Accounts */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleGoogleRegister('rahul.landlord@gmail.com', 'Rahul Sharma')}
+                className="w-full p-3 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition flex items-center justify-between text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                    R
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block leading-tight">Rahul Sharma</span>
+                    <span className="text-[11px] text-slate-500 block">rahul.landlord@gmail.com</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                  1-Tap
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleGoogleRegister('priya.tenant@gmail.com', 'Priya Verma')}
+                className="w-full p-3 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition flex items-center justify-between text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs">
+                    P
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block leading-tight">Priya Verma</span>
+                    <span className="text-[11px] text-slate-500 block">priya.tenant@gmail.com</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                  1-Tap
+                </span>
+              </button>
+            </div>
+
+            {/* Custom Google Account Option */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 block">Or use your Google email:</span>
+              <div className="flex items-center px-3 py-2 rounded-xl border border-slate-200 focus-within:border-emerald-600 bg-white">
+                <Mail className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+                <input
+                  type="email"
+                  value={googleEmail}
+                  onChange={(e) => setGoogleEmail(e.target.value)}
+                  placeholder="your.name@gmail.com"
+                  className="w-full text-xs font-semibold text-slate-900 focus:outline-none bg-transparent"
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={!googleEmail || loading}
+                onClick={() => handleGoogleRegister()}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition disabled:opacity-40"
+              >
+                Create Account with this Google Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
