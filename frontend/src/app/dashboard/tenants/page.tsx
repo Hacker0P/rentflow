@@ -14,6 +14,12 @@ import {
   Building2,
   Calendar,
   IndianRupee,
+  Copy,
+  Check,
+  Sparkles,
+  ExternalLink,
+  X,
+  Share2,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 
@@ -38,6 +44,15 @@ interface Tenant {
   }>;
 }
 
+interface WelcomeInviteData {
+  tenantName: string;
+  tenantPhone: string;
+  unitNumber: string;
+  propertyName: string;
+  monthlyRent: number;
+  rentDueDay: number;
+}
+
 export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +73,10 @@ export default function TenantsPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 1-Tap WhatsApp Welcome Invite Modal
+  const [welcomeInviteModal, setWelcomeInviteModal] = useState<WelcomeInviteData | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
 
   const fetchTenants = async () => {
     try {
@@ -115,14 +134,16 @@ export default function TenantsPage() {
     setError(null);
 
     try {
+      const selectedUnit = availableUnits.find((u) => u.id === selectedUnitId);
+
       await apiRequest('/leases', {
         method: 'POST',
         body: JSON.stringify({
           unitId: selectedUnitId,
           tenant: {
-            name: tenantName,
-            phone: tenantPhone,
-            email: tenantEmail || undefined,
+            name: tenantName.trim(),
+            phone: tenantPhone.trim(),
+            email: tenantEmail.trim() || undefined,
           },
           monthlyRent: Number(monthlyRent),
           maintenanceAmount: Number(maintenanceAmount || 0),
@@ -132,11 +153,24 @@ export default function TenantsPage() {
         }),
       });
 
+      // Prepare 1-Tap WhatsApp Welcome Invite Data
+      const inviteData: WelcomeInviteData = {
+        tenantName: tenantName.trim(),
+        tenantPhone: tenantPhone.trim(),
+        unitNumber: selectedUnit?.unitNumber || 'Unit',
+        propertyName: selectedUnit?.propertyName || 'Property',
+        monthlyRent: Number(monthlyRent),
+        rentDueDay: Number(rentDueDay),
+      };
+
       setShowAddLease(false);
       setTenantName('');
       setTenantPhone('');
       setTenantEmail('');
       await fetchTenants();
+
+      // Immediately present the 1-Tap WhatsApp Invite Modal!
+      setWelcomeInviteModal(inviteData);
     } catch (err: any) {
       setError(err.message || 'Failed to create lease');
     } finally {
@@ -156,6 +190,38 @@ export default function TenantsPage() {
     }
   };
 
+  // Helper to generate formatted WhatsApp invite text & link
+  const getWhatsAppInviteDetails = (data: WelcomeInviteData) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://rentflow-mu.vercel.app';
+    const loginUrl = `${origin}/login`;
+    const cleanPhone = data.tenantPhone.replace(/[^0-9]/g, '');
+    const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+    const message = `Namaste ${data.tenantName} Ji! 🙏
+Welcome to Unit ${data.unitNumber} at ${data.propertyName}.
+
+Your RentFlow portal is active:
+🏠 Monthly Rent: ₹${Number(data.monthlyRent).toLocaleString('en-IN')} (Due ${data.rentDueDay}th of month)
+⚡ Direct UPI Rent Payments (0% Gateway Fees)
+🧾 Instant Verified Rent Receipts
+🛠️ 1-Tap Maintenance & Repair Requests
+
+Check your rent terms, pay via UPI, and download receipts here:
+${loginUrl}
+
+(Log in with your registered mobile: +91 ${cleanPhone.slice(-10)})`;
+
+    const waLink = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
+
+    return { message, waLink, cleanPhone };
+  };
+
+  const handleCopyMessage = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 2500);
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -170,7 +236,7 @@ export default function TenantsPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Tenants & Leases</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Tenants &amp; Leases</h2>
           <p className="text-xs text-slate-500 mt-0.5">Manage tenant directory, active leases, monthly rent, and contract terms.</p>
         </div>
         <button
@@ -192,7 +258,7 @@ export default function TenantsPage() {
           <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800">No tenants registered yet</h3>
           <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Click &quot;New Lease Agreement&quot; to assign a tenant to an available unit and define monthly rent.
+            Click &quot;New Lease Agreement&quot; to assign a tenant to an available unit, define rent, and send an instant 1-tap WhatsApp welcome invite.
           </p>
         </div>
       ) : (
@@ -204,6 +270,17 @@ export default function TenantsPage() {
             {tenants.map((t) => {
               const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
               const cleanPhone = t.phone ? t.phone.replace(/[^0-9]/g, '') : '';
+
+              const inviteData: WelcomeInviteData | null = activeLease
+                ? {
+                    tenantName: t.name,
+                    tenantPhone: t.phone,
+                    unitNumber: activeLease.unit.unitNumber,
+                    propertyName: activeLease.unit.property.name,
+                    monthlyRent: Number(activeLease.monthlyRent),
+                    rentDueDay: activeLease.rentDueDay,
+                  }
+                : null;
 
               return (
                 <div
@@ -267,35 +344,36 @@ export default function TenantsPage() {
                     </div>
                   )}
 
-                  {/* Contact & Actions Row */}
-                  <div className="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
-                    <div className="flex items-center gap-2">
+                  {/* Contact & 1-Tap Invite Row */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* 1-Tap WhatsApp Welcome Invite Button */}
+                      {inviteData && (
+                        <button
+                          type="button"
+                          onClick={() => setWelcomeInviteModal(inviteData)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] text-xs font-bold border border-[#25D366]/40 transition active:scale-95 shadow-2xs"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                          <span>WhatsApp Invite</span>
+                        </button>
+                      )}
+
                       {t.phone && (
-                        <>
-                          <a
-                            href={`tel:${cleanPhone}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95"
-                          >
-                            <Phone className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Call</span>
-                          </a>
-                          <a
-                            href={`https://wa.me/${cleanPhone}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200/80 transition active:scale-95"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>WhatsApp</span>
-                          </a>
-                        </>
+                        <a
+                          href={`tel:${cleanPhone}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition active:scale-95"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Call</span>
+                        </a>
                       )}
                     </div>
 
                     {activeLease && activeLease.status === 'ACTIVE' && (
                       <button
                         onClick={() => handleTerminateLease(activeLease.id)}
-                        className="px-2.5 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-[11px] font-semibold transition"
+                        className="px-2.5 py-1 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-[11px] font-semibold transition"
                       >
                         End Lease
                       </button>
@@ -320,81 +398,110 @@ export default function TenantsPage() {
                     <th className="py-3.5 px-4">Monthly Rent + Maint</th>
                     <th className="py-3.5 px-4">Due Day</th>
                     <th className="py-3.5 px-4">Lease Status</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
+                    <th className="py-3.5 px-4 text-right">1-Tap WhatsApp &amp; Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {tenants.map((t) => (
-                    <tr key={t.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-4 font-bold text-slate-900 text-xs">
-                        {t.name}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-slate-700 flex items-center gap-1 font-mono text-[11px]">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          {t.phone}
-                        </span>
-                        {t.email && (
-                          <span className="text-slate-400 flex items-center gap-1 text-[11px] mt-0.5">
-                            <Mail className="w-3 h-3 text-slate-400" />
-                            {t.email}
+                  {tenants.map((t) => {
+                    const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
+                    const cleanPhone = t.phone ? t.phone.replace(/[^0-9]/g, '') : '';
+
+                    const inviteData: WelcomeInviteData | null = activeLease
+                      ? {
+                          tenantName: t.name,
+                          tenantPhone: t.phone,
+                          unitNumber: activeLease.unit.unitNumber,
+                          propertyName: activeLease.unit.property.name,
+                          monthlyRent: Number(activeLease.monthlyRent),
+                          rentDueDay: activeLease.rentDueDay,
+                        }
+                      : null;
+
+                    return (
+                      <tr key={t.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-4 px-4 font-bold text-slate-900 text-xs">
+                          {t.name}
+                        </td>
+                        <td className="py-4 px-4">
+                          <span className="text-slate-700 flex items-center gap-1 font-mono text-[11px]">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {t.phone}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        {t.leases.length > 0 ? (
-                          <div>
-                            <span className="font-semibold text-slate-800 block text-xs">
-                              {t.leases[0].unit.unitNumber}
+                          {t.email && (
+                            <span className="text-slate-400 flex items-center gap-1 text-[11px] mt-0.5">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              {t.email}
                             </span>
-                            <span className="text-[11px] text-slate-500">
-                              {t.leases[0].unit.property.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">No active unit</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 font-bold text-slate-900">
-                        {t.leases.length > 0 ? (
-                          <>
-                            ₹{Number(t.leases[0].monthlyRent).toLocaleString('en-IN')}
-                            {Number(t.leases[0].maintenanceAmount) > 0 && (
-                              <span className="text-[11px] font-normal text-slate-500 block">
-                                + ₹{Number(t.leases[0].maintenanceAmount).toLocaleString('en-IN')} maint
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          {activeLease ? (
+                            <div>
+                              <span className="font-semibold text-slate-800 block text-xs">
+                                Unit {activeLease.unit.unitNumber}
                               </span>
+                              <span className="text-[11px] text-slate-500">
+                                {activeLease.unit.property.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">No active unit</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 font-bold text-slate-900">
+                          {activeLease ? (
+                            <>
+                              ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
+                              {Number(activeLease.maintenanceAmount) > 0 && (
+                                <span className="text-[11px] font-normal text-slate-500 block">
+                                  + ₹{Number(activeLease.maintenanceAmount).toLocaleString('en-IN')} maint
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-slate-700">
+                          {activeLease ? `${activeLease.rentDueDay}th of month` : '—'}
+                        </td>
+                        <td className="py-4 px-4">
+                          {activeLease && activeLease.status === 'ACTIVE' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                              Active Lease
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                              Ended
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {inviteData && (
+                              <button
+                                type="button"
+                                onClick={() => setWelcomeInviteModal(inviteData)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-bold text-xs border border-[#25D366]/40 transition active:scale-95"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                                <span>WhatsApp Invite</span>
+                              </button>
                             )}
-                          </>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-slate-700">
-                        {t.leases.length > 0 ? `${t.leases[0].rentDueDay}th of month` : '—'}
-                      </td>
-                      <td className="py-4 px-4">
-                        {t.leases.length > 0 && t.leases[0].status === 'ACTIVE' ? (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                            Active Lease
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
-                            Ended
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        {t.leases.length > 0 && t.leases[0].status === 'ACTIVE' && (
-                          <button
-                            onClick={() => handleTerminateLease(t.leases[0].id)}
-                            className="px-2.5 py-1 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-medium transition"
-                          >
-                            Terminate
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+
+                            {activeLease && activeLease.status === 'ACTIVE' && (
+                              <button
+                                onClick={() => handleTerminateLease(activeLease.id)}
+                                className="px-2.5 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-medium transition"
+                              >
+                                Terminate
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -402,7 +509,109 @@ export default function TenantsPage() {
         </div>
       )}
 
-      {/* New Lease Agreement Modal */}
+      {/* ========================================================================= */}
+      {/* 3. 1-Tap WhatsApp Welcome & Portal Invite Modal                            */}
+      {/* ========================================================================= */}
+      {welcomeInviteModal && (() => {
+        const { message, waLink, cleanPhone } = getWhatsAppInviteDetails(welcomeInviteModal);
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-slate-100 space-y-5 animate-in zoom-in-95 relative text-slate-900 max-h-[90vh] overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setWelcomeInviteModal(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Celebration Header */}
+              <div className="flex items-start gap-3.5 pt-1">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white flex items-center justify-center font-bold shadow-lg shadow-[#25D366]/30 shrink-0">
+                  <MessageCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold mb-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    <span>Lease Created &amp; Tenant Ready!</span>
+                  </div>
+                  <h3 className="font-black text-slate-900 text-lg leading-tight">
+                    Send WhatsApp Welcome Invite
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Welcome <span className="font-bold text-slate-800">{welcomeInviteModal.tenantName}</span> to Unit {welcomeInviteModal.unitNumber}. Send their login link with 1 tap.
+                  </p>
+                </div>
+              </div>
+
+              {/* Formatted WhatsApp Message Preview Bubble */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs px-1">
+                  <span className="font-bold text-slate-600 flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                    <span>WhatsApp Message Preview</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium">To: +91 {cleanPhone.slice(-10)}</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#E7F8E8] border border-[#25D366]/30 text-xs text-slate-800 whitespace-pre-line leading-relaxed font-sans shadow-inner select-text">
+                  {message}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2.5 pt-1">
+                {/* 1-Tap WhatsApp Primary CTA */}
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-4 px-5 rounded-2xl bg-[#25D366] hover:bg-[#1EBE5D] active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#25D366]/30 transition flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Send WhatsApp Welcome Invite</span>
+                  <ExternalLink className="w-4 h-4 ml-0.5 opacity-80" />
+                </a>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Copy Message Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyMessage(message)}
+                    className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
+                  >
+                    {copiedMessage ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        <span className="text-emerald-700 font-extrabold">Copied to Clipboard!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-slate-500" />
+                        <span>Copy Invite Text</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Close / Done Button */}
+                  <button
+                    type="button"
+                    onClick={() => setWelcomeInviteModal(null)}
+                    className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================================================= */}
+      {/* 4. New Lease Agreement Modal                                              */}
+      {/* ========================================================================= */}
       {showAddLease && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
@@ -547,7 +756,7 @@ export default function TenantsPage() {
                   disabled={submitting || availableUnits.length === 0}
                   className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50"
                 >
-                  {submitting ? 'Creating...' : 'Activate Lease'}
+                  {submitting ? 'Creating...' : 'Activate Lease & Invite Tenant'}
                 </button>
               </div>
             </form>
