@@ -42,34 +42,19 @@ export function LandlordMobileHeader({
     router.push('/login');
   };
 
-  const getSectionName = (path: string) => {
-    if (path.includes('/settings')) return 'Settings';
-    if (path.includes('/properties')) return 'Properties';
-    if (path.includes('/tenants')) return 'Tenants';
-    if (path.includes('/invoices')) return 'Invoices';
-    if (path.includes('/payments')) return 'Payments';
-    if (path.includes('/maintenance')) return 'Repairs';
-    return 'Dashboard';
-  };
-
   return (
     <>
       <header className="lg:hidden bg-white/95 backdrop-blur-md text-slate-900 sticky top-0 z-40 border-b border-slate-200/80 shadow-xs">
         <div className="px-4 h-16 flex items-center justify-between">
-          {/* Brand & Section Indicator */}
+          {/* Brand */}
           <Link href="/dashboard" className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-950/10 border border-emerald-500/20">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-slate-900 text-base tracking-tight leading-none">
-                  RentFlow
-                </span>
-                <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                  {getSectionName(pathname)}
-                </span>
-              </div>
+              <span className="font-black text-slate-900 text-base tracking-tight leading-none block">
+                RentFlow
+              </span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5">
                 Landlord Portal
               </span>

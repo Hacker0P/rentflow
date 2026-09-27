@@ -70,14 +70,9 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-slate-900 tracking-tight text-base block leading-none">
-                  RentFlow
-                </span>
-                <span className="text-[10px] font-extrabold text-teal-800 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-full">
-                  Resident
-                </span>
-              </div>
+              <span className="font-black text-slate-900 tracking-tight text-base block leading-none">
+                RentFlow
+              </span>
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
                 Tenant Portal
               </span>
