@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsEnum, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { MaintenanceCategory, MaintenancePriority } from '@prisma/client';
 
 export class CreateMaintenanceDto {
@@ -17,4 +17,8 @@ export class CreateMaintenanceDto {
   @IsEnum(MaintenancePriority)
   @IsOptional()
   priority?: MaintenancePriority;
+
+  @IsUUID()
+  @IsOptional()
+  unitId?: string;
 }

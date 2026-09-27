@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { MaintenanceService } from './maintenance.service';
 import { CreateMaintenanceDto } from './dto/create-maintenance.dto';
 import { UpdateMaintenanceStatusDto } from './dto/update-maintenance-status.dto';
@@ -30,5 +40,13 @@ export class MaintenanceController {
     @Body() dto: UpdateMaintenanceStatusDto,
   ) {
     return this.maintenanceService.updateStatus(user.id, id, dto);
+  }
+
+  @Delete(':id')
+  async remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.maintenanceService.remove(user.id, id);
   }
 }
