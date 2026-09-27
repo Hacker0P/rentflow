@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Building2,
@@ -23,6 +23,11 @@ import {
   CreditCard,
   Send,
   X,
+  Wrench,
+  Check,
+  ChevronRight,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 
@@ -120,6 +125,37 @@ export default function TenantHomePage() {
     fetchDashboard();
   }, []);
 
+  const indianGreeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour < 12) return { hindi: 'Shubh Prabhat', english: 'Good Morning' };
+    if (hour >= 12 && hour < 17) return { hindi: 'Shubh Dopahar', english: 'Good Afternoon' };
+    return { hindi: 'Shubh Sandhya', english: 'Good Evening' };
+  }, []);
+
+  const currentDateString = useMemo(() => {
+    try {
+      return new Date().toLocaleDateString('en-IN', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const currentMonthYear = useMemo(() => {
+    try {
+      return new Date().toLocaleDateString('en-IN', {
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return 'This Month';
+    }
+  }, []);
+
   const handleCopyUpi = () => {
     if (data?.landlord?.upiId) {
       navigator.clipboard.writeText(data.landlord.upiId);
@@ -193,28 +229,129 @@ export default function TenantHomePage() {
     localQr ||
     (upiUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}` : '');
 
+  // UPI App deep link strings
+  const upiIntentString = upiUrl || (landlord.upiId && currentBill
+    ? `upi://pay?pa=${encodeURIComponent(landlord.upiId)}&pn=${encodeURIComponent(landlord.name)}&am=${currentBill.remainingBalance}&cu=INR&tn=${encodeURIComponent(`Rent Unit ${unit.unitNumber} ${currentMonthYear}`)}`
+    : '');
+
   return (
     <div className="space-y-6">
-      {/* Top Banner Greeting */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-            Welcome Home
-          </span>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">{tenant.name}</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Unit {unit.unitNumber} • {property.name}
+      {/* 1. Indian Welcome Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 rounded-3xl p-5 sm:p-7 text-white shadow-md border border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative overflow-hidden">
+        <div className="relative z-10 space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
+              <span>🇮🇳</span>
+              <span>{indianGreeting.hindi}</span>
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+              <span>Active Resident</span>
+            </span>
+            <span className="text-[11px] text-slate-300 font-medium">
+              {currentDateString}
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
+            <span>Namaste, {tenant.name} Ji</span>
+            <span className="inline-block text-2xl">🙏</span>
+          </h1>
+
+          <p className="text-slate-300 text-xs sm:text-sm max-w-xl leading-relaxed">
+            Welcome home to <strong className="text-white font-bold">Unit {unit.unitNumber}</strong> at{' '}
+            <strong className="text-teal-300 font-semibold">{property.name}</strong>. Here is your rent status and payment hub for{' '}
+            <strong className="text-teal-400 font-semibold">{currentMonthYear}</strong>.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Active Resident
-          </span>
+        {/* Landlord Quick Contacts */}
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
+          <a
+            href={`https://wa.me/${landlord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+              `Namaste ${landlord.name} Ji, this is ${tenant.name} from Unit ${unit.unitNumber} (${property.name}).`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition active:scale-95"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>WhatsApp Landlord</span>
+          </a>
+          <a
+            href={`tel:${landlord.phone}`}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-600 transition active:scale-95"
+          >
+            <Phone className="w-3.5 h-3.5" />
+            <span>Call</span>
+          </a>
         </div>
+
+        <div className="absolute right-0 top-0 w-72 h-72 bg-teal-600/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
-      {/* Hero Bill Due Card */}
+      {/* 2. Quick Action Shortcuts for Resident */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <button
+          onClick={() => {
+            if (currentBill) setShowUpiModal(true);
+          }}
+          disabled={!currentBill}
+          className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-xs transition flex items-center gap-3 group text-left disabled:opacity-50"
+        >
+          <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition shrink-0">
+            <QrCode className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-slate-800 block truncate">Pay via UPI / QR</span>
+            <span className="text-[10px] text-slate-400 block truncate">Instant scan & pay</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            if (currentBill) setShowReportModal(true);
+          }}
+          disabled={!currentBill}
+          className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-xs transition flex items-center gap-3 group text-left disabled:opacity-50"
+        >
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition shrink-0">
+            <Send className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-slate-800 block truncate">Submit UTR Proof</span>
+            <span className="text-[10px] text-slate-400 block truncate">Report paid rent</span>
+          </div>
+        </button>
+
+        <Link
+          href="/tenant/receipts"
+          className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-xs transition flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition shrink-0">
+            <Receipt className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-slate-800 block truncate">HRA Receipts</span>
+            <span className="text-[10px] text-slate-400 block truncate">Tax exemption proof</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/tenant/maintenance"
+          className="p-3.5 rounded-2xl bg-white border border-slate-200/80 hover:border-teal-300 hover:shadow-xs transition flex items-center gap-3 group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition shrink-0">
+            <Wrench className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-xs font-bold text-slate-800 block truncate">Flat Repairs</span>
+            <span className="text-[10px] text-slate-400 block truncate">Request maintenance</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* 3. Hero Bill Due Card */}
       {currentBill ? (
         <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 rounded-3xl text-white p-6 sm:p-8 shadow-xl shadow-slate-900/10 relative overflow-hidden border border-slate-800">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -227,7 +364,7 @@ export default function TenantHomePage() {
                       : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                   }`}
                 >
-                  {currentBill.status === 'OVERDUE' ? '⚠️ Payment Overdue' : '⏰ Payment Due'}
+                  {currentBill.status === 'OVERDUE' ? '⚠️ Payment Overdue' : '⏰ Rent Bill Due'}
                 </span>
                 <span className="text-xs text-slate-300">
                   Due by {new Date(currentBill.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -235,7 +372,7 @@ export default function TenantHomePage() {
               </div>
 
               <div>
-                <span className="text-xs text-slate-400 block font-medium">Outstanding Balance</span>
+                <span className="text-xs text-slate-400 block font-medium">Outstanding Rent Balance</span>
                 <div className="text-4xl sm:text-5xl font-black tracking-tight text-white mt-1">
                   ₹{currentBill.remainingBalance.toLocaleString('en-IN')}
                 </div>
@@ -243,16 +380,16 @@ export default function TenantHomePage() {
 
               {/* Breakdown chips */}
               <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                <span className="px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 backdrop-blur-md">
+                <span className="px-2.5 py-1 rounded-xl bg-white/10 text-slate-200 backdrop-blur-md">
                   Rent: ₹{lease.monthlyRent.toLocaleString('en-IN')}
                 </span>
                 {lease.maintenanceAmount > 0 && (
-                  <span className="px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 backdrop-blur-md">
+                  <span className="px-2.5 py-1 rounded-xl bg-white/10 text-slate-200 backdrop-blur-md">
                     Maintenance: ₹{lease.maintenanceAmount.toLocaleString('en-IN')}
                   </span>
                 )}
                 {currentBill.paidAmount > 0 && (
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
                     Paid: ₹{currentBill.paidAmount.toLocaleString('en-IN')}
                   </span>
                 )}
@@ -263,7 +400,7 @@ export default function TenantHomePage() {
             <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 shrink-0">
               <button
                 onClick={() => setShowUpiModal(true)}
-                className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-2 text-center"
+                className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-900/30 transition flex items-center justify-center gap-2 text-center active:scale-95"
               >
                 <QrCode className="w-4 h-4" />
                 <span>Pay via UPI App / QR</span>
@@ -271,7 +408,7 @@ export default function TenantHomePage() {
 
               <button
                 onClick={() => setShowReportModal(true)}
-                className="py-3 px-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/10 transition flex items-center justify-center gap-2 text-center"
+                className="py-3 px-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/10 transition flex items-center justify-center gap-2 text-center active:scale-95"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>I Have Paid (Submit UTR)</span>
@@ -282,40 +419,40 @@ export default function TenantHomePage() {
                 target="_blank"
                 className="text-center text-xs text-slate-400 hover:text-white transition flex items-center justify-center gap-1 mt-1 font-medium"
               >
-                <span>View itemized bill</span>
+                <span>View itemized rent invoice</span>
                 <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 block">
-                All Caught Up!
+                Badhai Ho! 🎉 All Rent Settled
               </span>
-              <h2 className="text-xl font-bold text-slate-900">Zero Dues Pending</h2>
+              <h2 className="text-xl font-bold text-slate-900">Zero Dues Pending for {currentMonthYear}</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                All rent and maintenance charges have been settled. Your next invoice will be issued on the 1st.
+                All monthly rent and maintenance charges have been paid. Your next invoice will be issued on the 1st of next month.
               </p>
             </div>
           </div>
 
           <Link
             href="/tenant/receipts"
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+            className="px-5 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center gap-1.5 shrink-0 active:scale-95"
           >
-            <Receipt className="w-4 h-4 text-slate-500" />
-            <span>View Paid Receipts</span>
+            <Receipt className="w-4 h-4 text-emerald-600" />
+            <span>Download Rent Receipts</span>
           </Link>
         </div>
       )}
 
-      {/* Two Column Layout: Lease Details and Landlord Contact */}
+      {/* 4. Two Column Layout: Lease Details and Landlord Contact */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Active Lease Info */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
@@ -378,7 +515,7 @@ export default function TenantHomePage() {
 
             <a
               href={`https://wa.me/${landlord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                `Hi ${landlord.name}, this is ${tenant.name} from Unit ${unit.unitNumber}.`
+                `Namaste ${landlord.name} Ji, this is ${tenant.name} from Unit ${unit.unitNumber} (${property.name}).`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -449,257 +586,262 @@ export default function TenantHomePage() {
                     ₹{currentBill.remainingBalance.toLocaleString('en-IN')}
                   </span>
 
-                  {/* QR Code */}
-                  <div className="p-3 bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={
-                        qrError && upiUrl
-                          ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}`
-                          : qrCodeUrl
-                      }
-                      alt="UPI QR Code"
-                      width={180}
-                      height={180}
-                      className="rounded-xl object-contain max-h-[200px]"
-                      onError={() => setQrError(true)}
-                    />
-                    {!qrError && (landlord.qrImageUrl || localQr) && (
-                      <span className="mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Payment QR
-                      </span>
+                  {/* QR Image Display */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-3xl shadow-sm mb-4 relative max-w-[210px] w-full aspect-square flex items-center justify-center">
+                    {qrCodeUrl && !qrError ? (
+                      <img
+                        src={qrCodeUrl}
+                        alt="Landlord UPI QR"
+                        onError={() => setQrError(true)}
+                        className="w-full h-full object-contain rounded-2xl"
+                      />
+                    ) : (
+                      <div className="text-center p-4">
+                        <QrCode className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                        <span className="text-[11px] text-slate-400">QR code unavailable</span>
+                      </div>
                     )}
                   </div>
 
-                  <span className="text-[11px] text-slate-400 mt-2 text-center">
-                    Scan with Google Pay, PhonePe, Paytm, or BHIM
-                  </span>
-
-                  {/* UPI ID Copy */}
-                  <div className="w-full mt-4 p-2.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <div className="min-w-0 pr-2">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">UPI ID</span>
-                      <span className="font-mono text-xs font-bold text-slate-800 truncate block">
-                        {landlord.upiId}
-                      </span>
+                  {/* Landlord UPI ID Copy */}
+                  {landlord.upiId && (
+                    <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-3 flex items-center justify-between mb-4">
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                          Landlord UPI ID
+                        </span>
+                        <span className="text-xs font-mono font-bold text-slate-800 truncate block">
+                          {landlord.upiId}
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleCopyUpi}
+                        className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-700 transition flex items-center gap-1 shrink-0"
+                      >
+                        {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={handleCopyUpi}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0 transition"
-                    >
-                      {copiedUpi ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
+                  )}
 
-                  {/* Direct Mobile Intent */}
-                  {upiUrl && (
-                    <a
-                      href={upiUrl}
-                      className="w-full mt-3 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition flex items-center justify-center gap-2 text-center shadow-md shadow-emerald-950/20"
-                    >
-                      <Smartphone className="w-4 h-4" />
-                      <span>Launch UPI App on Phone</span>
-                    </a>
+                  {/* Direct Mobile UPI Intent Buttons */}
+                  {upiIntentString && (
+                    <div className="w-full space-y-2">
+                      <span className="text-[11px] font-bold text-slate-400 block text-center uppercase tracking-wider">
+                        Tap to Pay Directly with App
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <a
+                          href={upiIntentString}
+                          className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-800 text-xs font-bold border border-slate-200 text-center transition flex items-center justify-center gap-1.5"
+                        >
+                          <span>Google Pay</span>
+                        </a>
+                        <a
+                          href={upiIntentString}
+                          className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-purple-50 text-slate-800 text-xs font-bold border border-slate-200 text-center transition flex items-center justify-center gap-1.5"
+                        >
+                          <span>PhonePe</span>
+                        </a>
+                        <a
+                          href={upiIntentString}
+                          className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-sky-50 text-slate-800 text-xs font-bold border border-slate-200 text-center transition flex items-center justify-center gap-1.5"
+                        >
+                          <span>Paytm</span>
+                        </a>
+                        <a
+                          href={upiIntentString}
+                          className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold text-center transition flex items-center justify-center gap-1.5"
+                        >
+                          <span>Any UPI App</span>
+                        </a>
+                      </div>
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="text-center pb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                      Amount to Transfer
-                    </span>
-                    <span className="text-2xl font-black text-slate-900">
-                      ₹{currentBill.remainingBalance.toLocaleString('en-IN')}
+                /* Direct Bank Transfer Tab */
+                <div className="space-y-4 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      Please verify landlord name and IFSC code carefully before confirming payment via Net Banking.
                     </span>
                   </div>
 
-                  <div className="space-y-2.5 text-xs">
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Bank Name</span>
-                        <span className="font-bold text-slate-800">{landlord.bankName || 'HDFC Bank Ltd'}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Beneficiary Name</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Account Beneficiary</span>
                         <span className="font-bold text-slate-800">{landlord.name}</span>
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Account Number</span>
-                        <span className="font-bold font-mono text-slate-900">
-                          {landlord.bankAccountNumber || '50100492817291'}
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Bank Name</span>
+                        <span className="font-bold text-slate-800">{landlord.bankName || 'HDFC Bank'}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Account Number</span>
+                        <span className="font-bold font-mono text-slate-800">
+                          {landlord.bankAccountNumber || '50100482910482'}
                         </span>
                       </div>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(landlord.bankAccountNumber || '50100492817291');
+                          navigator.clipboard.writeText(landlord.bankAccountNumber || '50100482910482');
                           setCopiedBankAcc(true);
                           setTimeout(() => setCopiedBankAcc(false), 2000);
                         }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0 transition"
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700"
                       >
-                        {copiedBankAcc ? 'Copied!' : 'Copy'}
+                        {copiedBankAcc ? 'Copied' : 'Copy'}
                       </button>
                     </div>
 
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">IFSC Code</span>
-                        <span className="font-bold font-mono text-slate-900 uppercase">
-                          {landlord.bankIfsc || 'HDFC0000123'}
-                        </span>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">IFSC Code</span>
+                        <span className="font-bold font-mono text-slate-800">{landlord.bankIfsc || 'HDFC0001234'}</span>
                       </div>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(landlord.bankIfsc || 'HDFC0000123');
+                          navigator.clipboard.writeText(landlord.bankIfsc || 'HDFC0001234');
                           setCopiedBankIfsc(true);
                           setTimeout(() => setCopiedBankIfsc(false), 2000);
                         }}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 shrink-0 transition"
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700"
                       >
-                        {copiedBankIfsc ? 'Copied!' : 'Copy'}
+                        {copiedBankIfsc ? 'Copied' : 'Copy'}
                       </button>
                     </div>
                   </div>
-
-                  <p className="text-[11px] text-slate-500 text-center">
-                    Transfer via NEFT, RTGS, or IMPS from your mobile banking app.
-                  </p>
                 </div>
               )}
+            </div>
 
-              {/* Bottom Quick Switch to Report Payment */}
-              <div className="mt-5 pt-4 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    setShowUpiModal(false);
-                    setShowReportModal(true);
-                  }}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-2"
-                >
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>I have made the transfer &rarr; Submit UTR</span>
-                </button>
-              </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Paid already?</span>
+              <button
+                onClick={() => {
+                  setShowUpiModal(false);
+                  setShowReportModal(true);
+                }}
+                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+              >
+                <span>Submit 12-digit UTR</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Self-Report Payment Modal */}
+      {/* Self-Report UTR Payment Modal */}
       {showReportModal && currentBill && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-slate-100 p-6 animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                   <Send className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-sm">Submit Payment Proof</h3>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Submit Payment Proof</h3>
+                  <p className="text-[11px] text-slate-400">Notify your landlord instantly</p>
+                </div>
               </div>
               <button
                 onClick={() => setShowReportModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {reportSuccess && (
-              <div className="my-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{reportSuccess}</span>
               </div>
             )}
 
             {reportError && (
-              <div className="my-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{reportError}</span>
               </div>
             )}
 
-            <form onSubmit={handleReportSubmit} className="space-y-4 pt-4">
+            <form onSubmit={handleReportSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Amount Paid (₹)
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Amount Paid (₹)</label>
                 <input
                   type="number"
-                  step="0.01"
                   required
-                  max={currentBill.remainingBalance}
                   value={reportAmount}
-                  onChange={(e) => setReportAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition font-bold"
+                  onChange={(e) => setReportAmount(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
                 />
-                <span className="text-[11px] text-slate-400 block mt-1">
-                  Balance Due: ₹{currentBill.remainingBalance.toLocaleString('en-IN')}
-                </span>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Payment Method
-                </label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
                 <select
                   value={reportMethod}
                   onChange={(e) => setReportMethod(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
                 >
-                  <option value="UPI">UPI (Google Pay, PhonePe, Paytm)</option>
-                  <option value="BANK_TRANSFER">Bank Transfer (NEFT / IMPS)</option>
-                  <option value="CASH">Cash directly to Landlord</option>
-                  <option value="CHEQUE">Cheque</option>
+                  <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
+                  <option value="BANK_TRANSFER">Bank IMPS / NEFT Transfer</option>
+                  <option value="CASH">Cash directly handed over</option>
+                  <option value="OTHER">Cheque / Other</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Transaction Reference / UTR Number
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  12-Digit UTR / Transaction Reference (Optional)
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. UPI/123456789012 or NEFT ref"
+                  placeholder="e.g. 427189038291"
                   value={reportRef}
                   onChange={(e) => setReportRef(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition font-mono"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-                  Optional Note for Landlord
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Paid from HDFC account"
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Notes for Landlord (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Paid from HDFC account ending in 4102..."
                   value={reportNotes}
                   onChange={(e) => setReportNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none resize-none"
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowReportModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition"
+                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={submittingReport || reportAmount <= 0}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition disabled:opacity-50"
+                  disabled={submittingReport}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
-                  {submittingReport ? 'Submitting...' : 'Confirm Payment'}
+                  {submittingReport && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{submittingReport ? 'Submitting...' : 'Record Payment Proof'}</span>
                 </button>
               </div>
             </form>
