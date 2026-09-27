@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Receipt,
@@ -17,9 +17,13 @@ import {
   ShieldCheck,
   X,
   Sparkles,
-  MessageCircle,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function TenantReceiptsPage() {
   const [data, setData] = useState<any | null>(null);
@@ -43,19 +47,12 @@ export default function TenantReceiptsPage() {
     loadData();
   }, []);
 
-  const indianGreeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 12) return { hindi: 'Shubh Prabhat', english: 'Good Morning' };
-    if (hour >= 12 && hour < 17) return { hindi: 'Shubh Dopahar', english: 'Good Afternoon' };
-    return { hindi: 'Shubh Sandhya', english: 'Good Evening' };
-  }, []);
-
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-          <span className="text-xs text-slate-500 font-semibold">Fetching payment records...</span>
+      <div className="flex h-72 items-center justify-center">
+        <div className="flex flex-col items-center gap-2.5">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+          <p className="text-xs text-slate-500 font-medium">Fetching payment records...</p>
         </div>
       </div>
     );
@@ -83,483 +80,292 @@ export default function TenantReceiptsPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* 1. Welcoming Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 rounded-3xl p-6 sm:p-8 text-white shadow-md border border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="relative z-10 space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5">
-              <span>🇮🇳</span>
-              <span>{indianGreeting.hindi}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Verified Payment Records</span>
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2 flex-wrap">
-            <span>Namaste, {tenant?.name || 'Resident'} Ji</span>
-            <span className="inline-block text-2xl">🙏</span>
-          </h1>
-
-          <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Easily track your monthly rent payments. See which months are paid, check any pending dues, and view or print payment receipts anytime.
-          </p>
-        </div>
-
-        <div className="relative z-10 flex items-center gap-3 shrink-0">
-          <Link
-            href="/tenant"
-            className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-slate-100 active:scale-95 text-slate-900 font-bold text-xs shadow-md transition"
-          >
-            <span>Back to Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        <div className="absolute right-0 top-0 w-72 h-72 bg-teal-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Payment Receipts & HRA</h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          Official rent receipts with landlord PAN for company income tax and HRA exemption claims.
+        </p>
       </div>
 
-      {/* 2. Simple Stat Cards (Has the tenant paid or is something pending?) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Status Card */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Payment Status
-          </span>
-          <div className="flex items-center justify-between pt-1">
-            {pendingCount === 0 ? (
-              <span className="text-lg font-black text-emerald-600 flex items-center gap-1.5">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                All Caught Up
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-emerald-200/80">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-emerald-800 font-semibold block">Total Rent Paid</span>
+              <span className="text-xl font-bold text-emerald-700 font-mono tabular-nums">
+                ₹{totalPaidRent.toLocaleString('en-IN')}
               </span>
-            ) : (
-              <span className="text-lg font-black text-rose-600 flex items-center gap-1.5">
-                <Clock className="w-5 h-5 text-rose-500" />
-                {pendingCount} Bill{pendingCount > 1 ? 's' : ''} Pending
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-500 font-semibold block">Verified Receipts</span>
+              <span className="text-xl font-bold text-slate-900 font-mono tabular-nums">
+                {fullyPaidCount} <span className="text-xs font-normal text-slate-400">receipts</span>
               </span>
-            )}
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Receipt className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-amber-800 font-semibold block">Pending Balance</span>
+              <span className="text-xl font-bold text-amber-700 font-mono tabular-nums">
+                ₹{totalPendingAmount.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1.5">
+        {[
+          { key: 'ALL', label: 'All Records', count: invoices.length },
+          { key: 'PAID', label: 'Verified Paid', count: fullyPaidCount },
+          { key: 'PENDING', label: 'Pending Dues', count: pendingCount },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key as any)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              filter === tab.key
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
+            }`}
+          >
+            <span>{tab.label}</span>
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                pendingCount === 0
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+              className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                filter === tab.key ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
               }`}
             >
-              {pendingCount === 0 ? 'Fully Paid' : `₹${totalPendingAmount.toLocaleString('en-IN')} Due`}
+              {tab.count}
             </span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {pendingCount === 0
-              ? 'All generated rent bills have been settled in full.'
-              : 'Please pay pending dues to keep your rent record clear.'}
-          </p>
-        </div>
-
-        {/* Total Rent Paid */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Total Rent Paid
-          </span>
-          <div className="text-2xl font-black text-slate-900 pt-0.5">
-            ₹{totalPaidRent.toLocaleString('en-IN')}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Across {fullyPaidCount} settled monthly bill{fullyPaidCount === 1 ? '' : 's'}.
-          </p>
-        </div>
-
-        {/* Rented Residence */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Rented Unit & Owner
-          </span>
-          <div className="text-xs font-bold text-slate-800 truncate pt-0.5">
-            Unit {unit?.unitNumber}, {property?.name}
-          </div>
-          <p className="text-[11px] text-slate-400 truncate mt-1">
-            Owner: {landlord?.name || 'Landlord'} • ₹{lease?.monthlyRent?.toLocaleString('en-IN') || 0}/mo
-          </p>
-        </div>
+          </button>
+        ))}
       </div>
 
-      {/* 3. Monthly Bills & Receipts Tracker */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Monthly Rent History & Receipts</h2>
-            <p className="text-xs text-slate-500">Check paid status for each month and view or print receipts</p>
-          </div>
+      {/* Receipts Content */}
+      {filteredInvoices.length === 0 ? (
+        <EmptyState
+          icon={Receipt}
+          title="No receipts found"
+          description="Once your rent payments are settled and confirmed by your landlord, official downloadable receipts will appear here."
+        />
+      ) : (
+        <div className="space-y-3">
+          {filteredInvoices.map((inv: any) => {
+            const isPaid = inv.isFullyPaid || inv.status === 'PAID';
 
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl text-xs font-semibold self-start sm:self-auto">
-            {[
-              { id: 'ALL' as const, label: 'All Bills', count: invoices.length },
-              { id: 'PAID' as const, label: 'Paid', count: fullyPaidCount },
-              { id: 'PENDING' as const, label: 'Pending Dues', count: pendingCount },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
-                  filter === tab.id
-                    ? 'bg-white text-slate-900 shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    filter === tab.id ? 'bg-slate-900 text-white' : 'bg-slate-200/80 text-slate-600'
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+            return (
+              <Card key={inv.id} className="hover:border-slate-300 transition-colors">
+                <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-slate-900">
+                        {inv.billingMonth} Rent Receipt
+                      </span>
+                      <Badge
+                        variant={isPaid ? 'success' : inv.status === 'OVERDUE' ? 'error' : 'warning'}
+                        size="sm"
+                        dot
+                      >
+                        {isPaid ? 'Paid' : inv.status}
+                      </Badge>
+                    </div>
 
-        {filteredInvoices.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs">
-            <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="font-bold text-slate-700 text-sm">No Rent Invoices Found</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              {filter === 'ALL'
-                ? 'Your monthly rent bills will appear here once generated.'
-                : filter === 'PENDING'
-                ? 'No pending bills! You have cleared all payments.'
-                : 'No paid receipts available yet.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filteredInvoices.map((inv: any) => {
-              const billingDate = new Date(inv.billingMonth);
-              const monthLabel = billingDate.toLocaleDateString('en-IN', {
-                month: 'long',
-                year: 'numeric',
-              });
+                    <p className="text-xs text-slate-500">
+                      Unit {unit?.unitNumber} • {property?.name} • Due {new Date(inv.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
 
-              const isPaid = inv.isFullyPaid || inv.status === 'PAID';
-              const isPartial = inv.status === 'PARTIALLY_PAID';
+                    {inv.payments && inv.payments.length > 0 && (
+                      <p className="text-[11px] text-slate-500">
+                        Paid via {inv.payments[0].paymentMethod} {inv.payments[0].transactionReference ? `(Ref: ${inv.payments[0].transactionReference})` : ''} on {new Date(inv.payments[0].paymentDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                    )}
+                  </div>
 
-              return (
-                <div
-                  key={inv.id}
-                  className={`bg-white rounded-3xl border shadow-xs p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition ${
-                    isPaid
-                      ? 'border-emerald-200/80 hover:border-emerald-300'
-                      : 'border-amber-200/90 bg-amber-50/20 hover:border-amber-300'
-                  }`}
-                >
-                  {/* Left info */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h3 className="font-bold text-slate-900 text-base">{monthLabel} Rent</h3>
+                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <div className="text-left sm:text-right">
+                      <span className="text-lg font-bold text-slate-900 font-mono tabular-nums block">
+                        ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                      </span>
                       {isPaid ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          PAID
-                        </span>
-                      ) : isPartial ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                          <Clock className="w-3.5 h-3.5 text-amber-600" />
-                          PARTIALLY PAID
+                        <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 sm:justify-end">
+                          <CheckCircle2 className="w-3 h-3" /> Settled
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300">
-                          <Clock className="w-3.5 h-3.5 text-rose-600" />
-                          PENDING PAYMENT
+                        <span className="text-[10px] text-amber-700 font-semibold block">
+                          Bal: ₹{Number(inv.remainingBalance).toLocaleString('en-IN')}
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs text-slate-600 flex flex-wrap items-center gap-2">
-                      <span>
-                        Total Bill: <strong>₹{inv.totalAmount.toLocaleString('en-IN')}</strong>
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Amount Paid:{' '}
-                        <strong className={isPaid ? 'text-emerald-700' : 'text-slate-800'}>
-                          ₹{inv.paidAmount.toLocaleString('en-IN')}
-                        </strong>
-                      </span>
-                      {!isPaid && inv.remainingBalance > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="text-rose-600 font-bold">
-                            Balance Due: ₹{inv.remainingBalance.toLocaleString('en-IN')}
-                          </span>
-                        </>
-                      )}
-                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant={isPaid ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedReceipt(inv)}
+                        leftIcon={<Printer className="w-3.5 h-3.5" />}
+                      >
+                        {isPaid ? 'View Receipt' : 'View Bill'}
+                      </Button>
 
-                    {/* Due Date & Settlement details */}
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                      <span>
-                        Due Date:{' '}
-                        {new Date(inv.dueDate).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </span>
-
-                      {inv.payments && inv.payments.length > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="text-emerald-700 font-medium">
-                            Settled on:{' '}
-                            {new Date(inv.payments[0].paymentDate).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </span>
-                          <span>•</span>
-                          <span className="font-mono text-slate-600">
-                            {inv.payments[0].paymentMethod}
-                            {inv.payments[0].transactionReference
-                              ? ` (${inv.payments[0].transactionReference})`
-                              : ''}
-                          </span>
-                        </>
-                      )}
+                      <Link href={`/pay/${inv.id}`} target="_blank">
+                        <Button variant="ghost" size="sm" title="Open Public Link">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
-
-                  {/* Right Action buttons */}
-                  <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
-                    {isPaid ? (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setSelectedReceipt(inv)}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs active:scale-95"
-                        >
-                          <Receipt className="w-3.5 h-3.5" />
-                          <span>View Receipt</span>
-                        </button>
-                        <a
-                          href={`https://wa.me/?text=${encodeURIComponent(
-                            `✅ Rent Receipt for ${monthLabel}\nUnit ${unit?.unitNumber}, ${property?.name}\nAmount: ₹${inv.paidAmount?.toLocaleString('en-IN')}\nStatus: Paid & Verified\nView receipt:\n${typeof window !== 'undefined' ? `${window.location.origin}/pay/${inv.id}` : ''}`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Share on WhatsApp"
-                          className="p-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 transition active:scale-95"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                      </div>
-                    ) : (
-                      <>
-                        <Link
-                          href={`/pay/${inv.id}`}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs active:scale-95"
-                        >
-                          <CreditCard className="w-3.5 h-3.5" />
-                          <span>Pay Now (₹{inv.remainingBalance.toLocaleString('en-IN')})</span>
-                        </Link>
-                        {inv.paidAmount > 0 && (
-                          <button
-                            onClick={() => setSelectedReceipt(inv)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
-                          >
-                            <Receipt className="w-3.5 h-3.5" />
-                            <span>Partial Slip</span>
-                          </button>
-                        )}
-                      </>
-                    )}
-
-                    <Link
-                      href={`/pay/${inv.id}`}
-                      target="_blank"
-                      className="p-2.5 rounded-2xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                      title="Open online payment link"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* CLEAN, SIMPLE RENT PAYMENT RECEIPT MODAL */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95">
-            {/* Modal Header Actions */}
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between print:hidden">
-              <div className="flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold">Rent Payment Receipt</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(
-                    `✅ Rent Payment Receipt\nUnit ${unit?.unitNumber}, ${property?.name}\nBilling Month: ${new Date(selectedReceipt.billingMonth).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}\nAmount: ₹${selectedReceipt.paidAmount?.toLocaleString('en-IN')}\nStatus: Paid & Verified\nReceipt link: ${typeof window !== 'undefined' ? `${window.location.origin}/pay/${selectedReceipt.id}` : ''}`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-300 text-xs font-bold transition border border-white/10"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>Share WhatsApp</span>
-                </a>
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold transition"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Receipt</span>
-                </button>
-                <button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Clean Receipt Body */}
-            <div className="p-6 sm:p-8 space-y-6 text-slate-900 font-sans" id="single-receipt-area">
-              {/* Receipt Header */}
-              <div className="border-b border-slate-200 pb-4 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
-                      RF
-                    </div>
-                    <span className="font-black text-slate-900 tracking-tight text-base">RentFlow</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-1">
-                    Monthly Rent Payment Receipt
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 font-mono block">
-                    Receipt #{selectedReceipt.id.slice(0, 8).toUpperCase()}
-                  </span>
-                  <span className="text-xs text-slate-600 font-medium block">
-                    Date: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Status Banner */}
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-emerald-700 block">Payment Status</span>
-                  <span className="text-base font-black text-emerald-900">
-                    {selectedReceipt.isFullyPaid ? 'Paid in Full' : 'Partially Paid'}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold uppercase text-emerald-700 block">Amount Settled</span>
-                  <span className="text-2xl font-black text-emerald-800">
-                    ₹{selectedReceipt.paidAmount.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Summary Details */}
-              <div className="grid grid-cols-2 gap-4 text-xs p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Tenant Name</span>
-                  <span className="font-bold text-slate-900 text-sm block">{tenant?.name}</span>
-                  <span className="text-slate-500 text-[11px] block">{tenant?.phone || tenant?.email}</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Landlord / Owner</span>
-                  <span className="font-bold text-slate-900 text-sm block">{landlord?.name}</span>
-                  <span className="text-slate-500 text-[11px] block">{landlord?.phone || landlord?.email}</span>
-                </div>
-              </div>
-
-              {/* Property Details */}
-              <div className="space-y-1.5 text-xs border-b border-slate-100 pb-4">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Rented Premises</span>
-                <p className="font-semibold text-slate-800">
-                  Unit {unit?.unitNumber}, {property?.name}
-                </p>
-                <p className="text-slate-500 text-[11px]">{property?.address}</p>
-              </div>
-
-              {/* Payment Details Table */}
-              <div className="space-y-2 text-xs">
-                <span className="text-[10px] font-bold uppercase text-slate-400 block">Billing Details</span>
-                <div className="rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-                  <div className="p-3 flex justify-between bg-slate-50 font-semibold text-slate-700">
-                    <span>Rent for Month</span>
-                    <span>
-                      {new Date(selectedReceipt.billingMonth).toLocaleDateString('en-IN', {
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                  <div className="p-3 flex justify-between">
-                    <span className="text-slate-600">Total Billed Amount</span>
-                    <span className="font-semibold text-slate-800">
-                      ₹{selectedReceipt.totalAmount.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="p-3 flex justify-between">
-                    <span className="text-slate-600">Payment Mode</span>
-                    <span className="font-semibold text-slate-800">
-                      {selectedReceipt.payments && selectedReceipt.payments.length > 0
-                        ? selectedReceipt.payments[0].paymentMethod
-                        : 'UPI / Direct'}
-                    </span>
-                  </div>
-                  {selectedReceipt.payments && selectedReceipt.payments[0]?.transactionReference && (
-                    <div className="p-3 flex justify-between">
-                      <span className="text-slate-600">Transaction Reference / UTR</span>
-                      <span className="font-mono text-slate-800 font-semibold">
-                        {selectedReceipt.payments[0].transactionReference}
-                      </span>
-                    </div>
-                  )}
-                  {selectedReceipt.payments && selectedReceipt.payments[0]?.paymentDate && (
-                    <div className="p-3 flex justify-between">
-                      <span className="text-slate-600">Settlement Date</span>
-                      <span className="text-slate-800">
-                        {new Date(selectedReceipt.payments[0].paymentDate).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Footer Note */}
-              <div className="pt-2 text-center text-[10px] text-slate-400">
-                This receipt is computer-generated upon payment verification on RentFlow. No physical signature is required.
-              </div>
-
-              {/* Close Button on Mobile / Non-print */}
-              <div className="pt-2 print:hidden">
-                <button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
-                >
-                  Close Receipt
-                </button>
-              </div>
-            </div>
-          </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
+      )}
+
+      {/* Printable Receipt Modal */}
+      {selectedReceipt && (
+        <Modal
+          isOpen={true}
+          onClose={() => setSelectedReceipt(null)}
+          title="Official Rent Receipt"
+          description={`Receipt for ${selectedReceipt.billingMonth}`}
+          maxWidth="lg"
+        >
+          <div className="space-y-4">
+            {/* Printable Receipt Canvas */}
+            <div id="printable-receipt" className="p-6 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-5 text-xs text-slate-800">
+              {/* Receipt Header */}
+              <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">RENT RECEIPT</h2>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    Receipt ID: {selectedReceipt.id.slice(0, 16)}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Billing Period: <strong className="text-slate-800">{selectedReceipt.billingMonth}</strong>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xl font-bold text-slate-900 font-mono tabular-nums block">
+                    ₹{Number(selectedReceipt.totalAmount).toLocaleString('en-IN')}
+                  </span>
+                  <Badge variant={selectedReceipt.isFullyPaid ? 'success' : 'warning'} size="sm" dot>
+                    {selectedReceipt.isFullyPaid ? 'PAID & CONFIRMED' : 'PENDING'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Landlord & Tenant Two-Column Grid */}
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-200">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Received By (Landlord)
+                  </span>
+                  <p className="font-semibold text-slate-900">{landlord?.name || 'Landlord'}</p>
+                  <p className="text-slate-600">{landlord?.phone}</p>
+                  {landlord?.panNumber ? (
+                    <p className="text-emerald-700 font-mono font-semibold">
+                      PAN: {landlord.panNumber} (Valid for HRA)
+                    </p>
+                  ) : (
+                    <p className="text-slate-400 italic">PAN not provided</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Paid By (Tenant)
+                  </span>
+                  <p className="font-semibold text-slate-900">{tenant?.name || 'Resident'}</p>
+                  <p className="text-slate-600">
+                    Unit {unit?.unitNumber}, {property?.name}
+                  </p>
+                  <p className="text-slate-500">{property?.address}</p>
+                </div>
+              </div>
+
+              {/* Items Breakdown Table */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Payment Breakdown
+                </span>
+                <div className="divide-y divide-slate-200 bg-white rounded-xl border border-slate-200/80 p-3">
+                  {selectedReceipt.items?.map((item: any) => (
+                    <div key={item.id} className="py-1.5 first:pt-0 last:pb-0 flex items-center justify-between">
+                      <span className="text-slate-700">{item.description}</span>
+                      <span className="font-semibold text-slate-900 font-mono tabular-nums">
+                        ₹{Number(item.amount).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              {selectedReceipt.payments && selectedReceipt.payments.length > 0 && (
+                <div className="p-3 rounded-xl bg-white border border-slate-200/80 space-y-1">
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                    Settlement Details
+                  </span>
+                  <p className="text-slate-700">
+                    Settled on {new Date(selectedReceipt.payments[0].paymentDate).toLocaleDateString('en-IN')} via {selectedReceipt.payments[0].paymentMethod}
+                  </p>
+                  {selectedReceipt.payments[0].transactionReference && (
+                    <p className="text-slate-600 font-mono">
+                      Ref / UTR: {selectedReceipt.payments[0].transactionReference}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Signature Stamp */}
+              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Electronically verified via RentFlow</span>
+                <span className="font-mono">{new Date().toLocaleDateString('en-IN')}</span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-2 flex items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setSelectedReceipt(null)}
+              >
+                Close
+              </Button>
+
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => window.print()}
+                leftIcon={<Printer className="w-4 h-4" />}
+              >
+                Print / Save PDF
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

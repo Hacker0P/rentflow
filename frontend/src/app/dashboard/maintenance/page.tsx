@@ -18,18 +18,17 @@ import {
   User,
   Filter,
   Search,
-  PlusCircle,
+  Plus,
   Trash2,
-  X,
   AlertCircle,
-  RefreshCw,
-  Loader2,
-  Calendar,
-  Check,
   ArrowRight,
-  Radio,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface LandlordMaintenanceTicket {
   id: string;
@@ -73,9 +72,8 @@ export default function LandlordMaintenancePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
-  // Create Ticket Modal State (Landlord side)
+  // Create Ticket Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
@@ -108,7 +106,6 @@ export default function LandlordMaintenancePage() {
     try {
       const res = await apiRequest<any[]>('/properties');
       const propData = res.data;
-      // Fetch units for each property
       const fullProps: PropertyOption[] = [];
       for (const p of propData) {
         try {
@@ -179,10 +176,10 @@ export default function LandlordMaintenancePage() {
         method: 'POST',
         body: JSON.stringify({
           unitId: selectedUnitId,
-          title: newTitle,
-          description: newDescription,
+          title: newTitle.trim(),
           category: newCategory,
           priority: newPriority,
+          description: newDescription.trim(),
         }),
       });
 
@@ -202,719 +199,522 @@ export default function LandlordMaintenancePage() {
     try {
       setDeletingTicket(true);
       setDeleteError(null);
+
       await apiRequest(`/maintenance/${ticketToDelete.id}`, {
         method: 'DELETE',
       });
+
       setTicketToDelete(null);
       await fetchTickets();
     } catch (err: any) {
-      setDeleteError(err.message || 'Failed to delete maintenance ticket');
+      setDeleteError(err.message || 'Failed to delete ticket');
     } finally {
       setDeletingTicket(false);
     }
   };
 
-  // KPIs
-  const stats = useMemo(() => {
-    const total = tickets.length;
-    const open = tickets.filter((t) => t.status === 'OPEN').length;
-    const inProgress = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
-    const resolved = tickets.filter((t) => t.status === 'RESOLVED').length;
-    const urgent = tickets.filter((t) => t.priority === 'URGENT' && t.status !== 'RESOLVED').length;
-    return { total, open, inProgress, resolved, urgent };
-  }, [tickets]);
-
-  // Filtered Tickets
-  const filteredTickets = useMemo(() => {
-    return tickets.filter((t) => {
-      // Status filter
-      if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
-
-      // Category filter
-      if (categoryFilter !== 'ALL' && t.category !== categoryFilter) return false;
-
-      // Priority filter
-      if (priorityFilter !== 'ALL' && t.priority !== priorityFilter) return false;
-
-      // Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = t.title.toLowerCase().includes(q);
-        const matchesDesc = t.description.toLowerCase().includes(q);
-        const matchesTenant = t.tenant.name.toLowerCase().includes(q);
-        const matchesPhone = t.tenant.phone.includes(q);
-        const matchesUnit = t.unit.unitNumber.toLowerCase().includes(q);
-        const matchesProp = t.unit.property.name.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesDesc && !matchesTenant && !matchesPhone && !matchesUnit && !matchesProp) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [tickets, statusFilter, categoryFilter, priorityFilter, searchQuery]);
-
-  const getCategoryDetails = (cat: string) => {
+  const getCategoryIcon = (cat: string) => {
     switch (cat) {
       case 'PLUMBING':
-        return {
-          icon: <Droplet className="w-4 h-4 text-sky-500" />,
-          bg: 'bg-sky-50 text-sky-700 border-sky-200/80',
-          label: 'Plumbing',
-        };
+        return <Droplet className="w-4 h-4 text-sky-600" />;
       case 'ELECTRICAL':
-        return {
-          icon: <Zap className="w-4 h-4 text-amber-500" />,
-          bg: 'bg-amber-50 text-amber-700 border-amber-200/80',
-          label: 'Electrical',
-        };
+        return <Zap className="w-4 h-4 text-amber-600" />;
       case 'APPLIANCE':
-        return {
-          icon: <Tv className="w-4 h-4 text-purple-500" />,
-          bg: 'bg-purple-50 text-purple-700 border-purple-200/80',
-          label: 'Appliance',
-        };
+        return <Tv className="w-4 h-4 text-purple-600" />;
       case 'CARPENTRY':
-        return {
-          icon: <Hammer className="w-4 h-4 text-amber-700" />,
-          bg: 'bg-orange-50 text-orange-800 border-orange-200/80',
-          label: 'Carpentry',
-        };
+        return <Hammer className="w-4 h-4 text-amber-700" />;
       case 'PAINTING':
-        return {
-          icon: <Paintbrush className="w-4 h-4 text-emerald-500" />,
-          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-          label: 'Painting',
-        };
+        return <Paintbrush className="w-4 h-4 text-emerald-600" />;
       default:
-        return {
-          icon: <HelpCircle className="w-4 h-4 text-slate-500" />,
-          bg: 'bg-slate-50 text-slate-700 border-slate-200/80',
-          label: 'General / Other',
-        };
+        return <HelpCircle className="w-4 h-4 text-slate-600" />;
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
+  const getPriorityBadge = (p: string) => {
+    switch (p) {
+      case 'HIGH':
+        return <Badge variant="error" size="sm">High Priority</Badge>;
+      case 'MEDIUM':
+        return <Badge variant="warning" size="sm">Medium</Badge>;
+      default:
+        return <Badge variant="neutral" size="sm">Low</Badge>;
     }
   };
 
-  const getRelativeTime = (dateStr: string) => {
-    try {
-      const diffMs = Date.now() - new Date(dateStr).getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      if (diffHours < 1) return 'Just now';
-      if (diffHours < 24) return `${diffHours}h ago`;
-      const diffDays = Math.floor(diffHours / 24);
-      if (diffDays === 1) return 'Yesterday';
-      if (diffDays < 7) return `${diffDays}d ago`;
-      return formatDate(dateStr);
-    } catch {
-      return '';
+  const getStatusBadge = (s: string) => {
+    switch (s) {
+      case 'RESOLVED':
+        return <Badge variant="success" size="sm" dot>Resolved</Badge>;
+      case 'IN_PROGRESS':
+        return <Badge variant="brand" size="sm" dot>In Progress</Badge>;
+      default:
+        return <Badge variant="warning" size="sm" dot>Pending Review</Badge>;
     }
   };
+
+  // Metrics
+  const pendingCount = tickets.filter((t) => t.status === 'PENDING').length;
+  const inProgressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
+  const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED').length;
+
+  const filteredTickets = tickets.filter((t) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      const matchTitle = t.title.toLowerCase().includes(q);
+      const matchDesc = t.description.toLowerCase().includes(q);
+      const matchTenant = t.tenant?.name?.toLowerCase().includes(q);
+      const matchUnit = t.unit?.unitNumber?.toLowerCase().includes(q);
+      const matchProp = t.unit?.property?.name?.toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchTenant && !matchUnit && !matchProp) {
+        return false;
+      }
+    }
+
+    if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
+    if (categoryFilter !== 'ALL' && t.category !== categoryFilter) return false;
+
+    return true;
+  });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Page Header */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-8">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Maintenance & Repairs</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Track repair tickets raised by tenants, assign technicians, and coordinate work seamlessly.
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Maintenance Desk</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Track repair tickets reported by tenants, assign technicians, and mark issues resolved.
           </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => fetchTickets()}
-            className="p-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-xs"
-            title="Refresh tickets"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950/20 active:scale-95 transition"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Log Maintenance Request</span>
-          </button>
-        </div>
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          leftIcon={<Plus className="w-4 h-4" />}
+          variant="primary"
+          size="md"
+        >
+          Log Repair Ticket
+        </Button>
       </div>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Total */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Total</span>
-            <span className="text-xl font-black text-slate-900 mt-0.5 block">{stats.total}</span>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <Wrench className="w-5 h-5" />
-          </div>
-        </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className={pendingCount > 0 ? 'border-amber-200/80' : ''}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider block">
+                Pending Review
+              </span>
+              <div className="text-2xl font-bold text-amber-700 tracking-tight mt-1">
+                {pendingCount}
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Open */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider block">Open / New</span>
-            <span className="text-xl font-black text-amber-700 mt-0.5 block">{stats.open}</span>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
+        <Card className={inProgressCount > 0 ? 'border-blue-200/80' : ''}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-blue-800 uppercase tracking-wider block">
+                In Progress
+              </span>
+              <div className="text-2xl font-bold text-blue-600 tracking-tight mt-1">
+                {inProgressCount}
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Wrench className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* In Progress */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-sky-600 uppercase tracking-wider block">In Progress</span>
-            <span className="text-xl font-black text-sky-700 mt-0.5 block">{stats.inProgress}</span>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center">
-            <Radio className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Resolved */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block">Resolved</span>
-            <span className="text-xl font-black text-emerald-700 mt-0.5 block">{stats.resolved}</span>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Urgent */}
-        <div className="col-span-2 lg:col-span-1 bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider block">Urgent Unresolved</span>
-            <span className="text-xl font-black text-rose-700 mt-0.5 block">{stats.urgent}</span>
-          </div>
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${stats.urgent > 0 ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-rose-50 text-rose-400'}`}>
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">
+                Resolved
+              </span>
+              <div className="text-2xl font-bold text-emerald-600 tracking-tight mt-1">
+                {resolvedCount}
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-3 sm:p-4 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by issue title, tenant, unit number, or property..."
-              className="w-full pl-9 pr-8 py-2.5 rounded-2xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none transition"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Secondary Filters */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-            {/* Category Dropdown */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              <option value="ALL">All Categories</option>
-              <option value="PLUMBING">Plumbing</option>
-              <option value="ELECTRICAL">Electrical</option>
-              <option value="APPLIANCE">Appliance</option>
-              <option value="CARPENTRY">Carpentry</option>
-              <option value="PAINTING">Painting</option>
-              <option value="OTHER">Other</option>
-            </select>
-
-            {/* Priority Dropdown */}
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            >
-              <option value="ALL">All Priorities</option>
-              <option value="URGENT">Urgent Only</option>
-              <option value="MEDIUM">Medium Priority</option>
-              <option value="LOW">Low Priority</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto text-xs font-semibold">
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {[
-            { id: 'ALL', label: 'All Tickets', count: stats.total },
-            { id: 'OPEN', label: 'Open', count: stats.open },
-            { id: 'IN_PROGRESS', label: 'In Progress', count: stats.inProgress },
-            { id: 'RESOLVED', label: 'Resolved', count: stats.resolved },
-          ].map((tab) => (
+            { key: 'ALL', label: 'All' },
+            { key: 'PENDING', label: 'Pending' },
+            { key: 'IN_PROGRESS', label: 'In Progress' },
+            { key: 'RESOLVED', label: 'Resolved' },
+          ].map((s) => (
             <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl transition shrink-0 flex items-center gap-1.5 ${
-                statusFilter === tab.id
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+              key={s.key}
+              onClick={() => setStatusFilter(s.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors shrink-0 ${
+                statusFilter === s.key
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
               }`}
             >
-              <span>{tab.label}</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  statusFilter === tab.id ? 'bg-slate-900 text-white' : 'bg-slate-200/80 text-slate-600'
-                }`}
-              >
-                {tab.count}
-              </span>
+              {s.label}
             </button>
           ))}
         </div>
+
+        <div className="relative sm:w-64">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search tickets, units, issues..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3.5 py-1.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-white"
+          />
+        </div>
       </div>
 
-      {/* Tickets Grid */}
+      {/* Content */}
       {loading ? (
         <div className="flex h-56 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+            <p className="text-xs text-slate-500 font-medium">Loading repair tickets...</p>
+          </div>
         </div>
       ) : filteredTickets.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center shadow-xs">
-          <Wrench className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-800">No maintenance tickets found</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            {searchQuery || statusFilter !== 'ALL' || categoryFilter !== 'ALL' || priorityFilter !== 'ALL'
-              ? 'No tickets match your active filter criteria. Try clearing filters or changing search terms.'
-              : 'When tenants submit repair tickets or when you log a request, they will appear here.'}
-          </p>
-          {(searchQuery || statusFilter !== 'ALL' || categoryFilter !== 'ALL' || priorityFilter !== 'ALL') && (
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setStatusFilter('ALL');
-                setCategoryFilter('ALL');
-                setPriorityFilter('ALL');
-              }}
-              className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition"
-            >
-              Reset All Filters
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={Wrench}
+          title="No maintenance tickets found"
+          description="Everything is running smoothly! When tenants log repair requests or you create one, they will appear here."
+          action={{
+            label: 'Log New Ticket',
+            onClick: () => setShowCreateModal(true),
+            icon: <Plus className="w-4 h-4" />,
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredTickets.map((t) => {
-            const cat = getCategoryDetails(t.category);
-            const isUrgent = t.priority === 'URGENT';
-            const isResolved = t.status === 'RESOLVED';
-            const isInProgress = t.status === 'IN_PROGRESS';
-            const isOpen = t.status === 'OPEN';
-
-            return (
-              <div
-                key={t.id}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col justify-between space-y-4 overflow-hidden"
-              >
-                <div className="space-y-3">
-                  {/* Top Bar: Category, Priority, and Delete */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Category Pill */}
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${cat.bg}`}>
-                        {cat.icon}
-                        <span>{cat.label}</span>
-                      </span>
-
-                      {/* Priority Pill */}
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-xl shrink-0 inline-flex items-center gap-1 ${
-                          isUrgent
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200 font-extrabold'
-                            : t.priority === 'MEDIUM'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}
-                      >
-                        {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-ping inline-block" />}
-                        <span>{t.priority}</span>
-                      </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredTickets.map((ticket) => (
+            <Card key={ticket.id} className="flex flex-col justify-between hover:border-slate-300 transition-all duration-200">
+              <CardContent className="p-5 space-y-4">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200/80">
+                      {getCategoryIcon(ticket.category)}
                     </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] text-slate-400 font-medium">
-                        {getRelativeTime(t.createdAt)}
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                        {ticket.category}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setTicketToDelete(t);
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95"
-                        title="Delete ticket"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <h3 className="font-semibold text-sm text-slate-900 leading-snug line-clamp-2">
+                        {ticket.title}
+                      </h3>
                     </div>
                   </div>
 
-                  {/* Title & Unit info */}
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-base leading-snug">{t.title}</h4>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="font-semibold text-slate-700">Unit {t.unit.unitNumber}</span>
-                      <span>•</span>
-                      <span className="truncate">{t.unit.property.name}</span>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteError(null);
+                      setTicketToDelete(ticket);
+                    }}
+                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                    title="Delete Ticket"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Description */}
+                <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed bg-slate-50/60 p-3 rounded-xl border border-slate-200/60">
+                  {ticket.description || 'No detailed remarks provided.'}
+                </p>
+
+                {/* Property & Tenant Meta */}
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-400">Location:</span>
+                    <span className="font-medium text-slate-800">
+                      Unit {ticket.unit?.unitNumber} ({ticket.unit?.property?.name})
+                    </span>
                   </div>
-
-                  {/* Issue Description */}
-                  <p className="text-xs text-slate-600 bg-slate-50/80 p-3 rounded-2xl border border-slate-100 leading-relaxed break-words">
-                    {t.description}
-                  </p>
-
-                  {/* Visual Status Progress Stepper */}
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-1.5 px-1">
-                      <span className={isOpen ? 'text-amber-700 font-bold' : isResolved || isInProgress ? 'text-slate-800' : ''}>
-                        1. Reported
-                      </span>
-                      <span className={isInProgress ? 'text-sky-700 font-bold' : isResolved ? 'text-slate-800' : ''}>
-                        2. In Progress
-                      </span>
-                      <span className={isResolved ? 'text-emerald-700 font-bold' : ''}>
-                        3. Resolved
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <div className={`h-1.5 rounded-full ${isOpen || isInProgress || isResolved ? 'bg-amber-500' : 'bg-slate-200'}`} />
-                      <div className={`h-1.5 rounded-full ${isInProgress || isResolved ? 'bg-sky-500' : 'bg-slate-200'}`} />
-                      <div className={`h-1.5 rounded-full ${isResolved ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                    </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-400">Reported By:</span>
+                    <span className="font-medium text-slate-800">
+                      {ticket.tenant?.name || 'Landlord entry'}
+                    </span>
                   </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span className="text-[11px] text-slate-400">Logged on:</span>
+                    <span className="text-slate-500">
+                      {new Date(ticket.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Tenant Details & Quick Actions */}
-                  <div className="flex items-center justify-between pt-1 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-[11px]">
-                        {t.tenant.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <span className="font-bold text-slate-800 block leading-tight">{t.tenant.name}</span>
-                        <span className="text-[11px] text-slate-400">{t.tenant.phone}</span>
-                      </div>
-                    </div>
+                {/* Status & Priority Row */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  {getStatusBadge(ticket.status)}
+                  {getPriorityBadge(ticket.priority)}
+                </div>
 
+                {/* Actions Bar */}
+                <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+                  {ticket.tenant?.phone && (
                     <div className="flex items-center gap-1.5">
                       <a
-                        href={`tel:${t.tenant.phone}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition active:scale-95"
-                        title="Call Tenant"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-slate-600" />
-                        <span className="hidden sm:inline">Call</span>
-                      </a>
-                      <a
-                        href={`https://wa.me/${t.tenant.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                          `Hi ${t.tenant.name}, regarding your maintenance request "${t.title}" for Unit ${t.unit.unitNumber} at ${t.unit.property.name}: `
-                        )}`}
+                        href={`https://wa.me/91${ticket.tenant.phone.replace(/[^0-9]/g, '').slice(-10)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition active:scale-95"
-                        title="WhatsApp Tenant"
+                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        title="Message Tenant on WhatsApp"
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">WhatsApp</span>
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={`tel:${ticket.tenant.phone}`}
+                        className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                        title="Call Tenant"
+                      >
+                        <Phone className="w-4 h-4" />
                       </a>
                     </div>
-                  </div>
-                </div>
+                  )}
 
-                {/* Status Transition Action Buttons */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[11px] font-bold px-2.5 py-1 rounded-xl ${
-                        isResolved
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : isInProgress
-                          ? 'bg-sky-100 text-sky-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {t.status.replace('_', ' ')}
-                    </span>
-                    {t.resolvedAt && (
-                      <span className="text-[10px] text-slate-400">
-                        Closed on {formatDate(t.resolvedAt)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* If Open: can advance to In Progress */}
-                    {isOpen && (
-                      <button
-                        onClick={() => handleStatusUpdate(t.id, 'IN_PROGRESS')}
-                        disabled={updatingId === t.id}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition active:scale-95 disabled:opacity-50"
+                  {/* Status Progression Buttons */}
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    {ticket.status === 'PENDING' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        isLoading={updatingId === ticket.id}
+                        onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
                       >
-                        {updatingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Radio className="w-3.5 h-3.5" />}
-                        <span>Start Work</span>
-                      </button>
+                        Start Work
+                      </Button>
                     )}
-
-                    {/* If not Resolved: can mark Resolved */}
-                    {!isResolved && (
-                      <button
-                        onClick={() => handleStatusUpdate(t.id, 'RESOLVED')}
-                        disabled={updatingId === t.id}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs active:scale-95 disabled:opacity-50"
+                    {ticket.status === 'IN_PROGRESS' && (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        isLoading={updatingId === ticket.id}
+                        onClick={() => handleStatusUpdate(ticket.id, 'RESOLVED')}
+                        leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
                       >
-                        {updatingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        <span>Mark Resolved</span>
-                      </button>
+                        Resolve
+                      </Button>
                     )}
-
-                    {/* If Resolved: option to Reopen */}
-                    {isResolved && (
+                    {ticket.status === 'RESOLVED' && (
                       <button
-                        onClick={() => handleStatusUpdate(t.id, 'OPEN')}
-                        disabled={updatingId === t.id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition active:scale-95 disabled:opacity-50"
-                        title="Reopen issue"
+                        type="button"
+                        disabled={updatingId === ticket.id}
+                        onClick={() => handleStatusUpdate(ticket.id, 'IN_PROGRESS')}
+                        className="text-[11px] text-slate-500 hover:text-slate-800 underline transition-colors"
                       >
-                        {updatingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                        <span>Reopen</span>
+                        Re-open
                       </button>
                     )}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Log Maintenance Request Modal (Landlord) */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                  <Wrench className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base leading-tight">Log Maintenance Request</h3>
-                  <p className="text-xs text-slate-400">Record a repair issue for a property & unit</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+      {/* Modal 1: Log Repair Ticket */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Log Maintenance Ticket"
+        description="Register an inspection, repair, or renovation request for a unit."
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateTicket} className="space-y-4">
+          {createError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{createError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Property *
+              </label>
+              <select
+                required
+                value={selectedPropertyId}
+                onChange={(e) => handlePropertySelect(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
               >
-                <X className="w-4 h-4" />
-              </button>
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {createError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{createError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateTicket} className="space-y-4">
-              {/* Property & Unit Picker */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select Property</label>
-                  <select
-                    value={selectedPropertyId}
-                    onChange={(e) => handlePropertySelect(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                    required
-                  >
-                    {properties.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select Unit / Flat</label>
-                  <select
-                    value={selectedUnitId}
-                    onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                    required
-                  >
-                    {properties
-                      .find((p) => p.id === selectedPropertyId)
-                      ?.units.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          Unit {u.unitNumber}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Issue Title</label>
-                <input
-                  type="text"
-                  required
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Master bedroom AC compressor leaking water"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              {/* Category & Priority */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                  >
-                    <option value="PLUMBING">Plumbing (Water/Tap)</option>
-                    <option value="ELECTRICAL">Electrical (Lights/Fan/Switch)</option>
-                    <option value="APPLIANCE">Appliance (AC/Geyser/Fridge)</option>
-                    <option value="CARPENTRY">Carpentry (Door/Lock/Window)</option>
-                    <option value="PAINTING">Painting / Wall Plaster</option>
-                    <option value="OTHER">Other Repair</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Priority Level</label>
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                  >
-                    <option value="LOW">Low (Routine maintenance)</option>
-                    <option value="MEDIUM">Medium (Standard repair)</option>
-                    <option value="URGENT">Urgent (Immediate attention)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Notes</label>
-                <textarea
-                  required
-                  rows={3}
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Detail the issue symptoms, technician scheduled date, or tenant report..."
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creatingTicket}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
-                >
-                  {creatingTicket && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{creatingTicket ? 'Logging...' : 'Save Request'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {ticketToDelete && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Delete Ticket</h3>
-                <p className="text-xs text-slate-500">Remove maintenance record</p>
-              </div>
-            </div>
-
-            {deleteError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{deleteError}</span>
-              </div>
-            )}
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-slate-900">&quot;{ticketToDelete.title}&quot;</span> for Unit {ticketToDelete.unit.unitNumber}? This record will be permanently removed.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setTicketToDelete(null);
-                  setDeleteError(null);
-                }}
-                disabled={deletingTicket}
-                className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Unit *
+              </label>
+              <select
+                required
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteTicket}
-                disabled={deletingTicket}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
-              >
-                {deletingTicket && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{deletingTicket ? 'Deleting...' : 'Delete Ticket'}</span>
-              </button>
+                {properties
+                  .find((p) => p.id === selectedPropertyId)
+                  ?.units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      Unit {u.unitNumber}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Issue Summary *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Geyser leakage in master bathroom, Main switch tripping"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Category *
+              </label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
+              >
+                <option value="PLUMBING">Plumbing & Water</option>
+                <option value="ELECTRICAL">Electrical & Wiring</option>
+                <option value="APPLIANCE">Appliance / AC</option>
+                <option value="CARPENTRY">Carpentry & Doors</option>
+                <option value="PAINTING">Painting & Walls</option>
+                <option value="OTHER">General Repair</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Priority *
+              </label>
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
+              >
+                <option value="HIGH">High Priority (Urgent)</option>
+                <option value="MEDIUM">Medium Priority</option>
+                <option value="LOW">Low Priority (Routine)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Detailed Description (Optional)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Describe symptoms, technician instructions, or vendor quotes..."
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition resize-none"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={creatingTicket}
+            >
+              Log Ticket
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 2: Delete Ticket Confirmation */}
+      <Modal
+        isOpen={!!ticketToDelete}
+        onClose={() => setTicketToDelete(null)}
+        title="Delete Ticket"
+        description="Are you sure you want to delete this repair ticket?"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            This will permanently remove ticket <strong className="text-slate-900">&ldquo;{ticketToDelete?.title}&rdquo;</strong> from your history.
+          </p>
+
+          {deleteError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{deleteError}</span>
+            </div>
+          )}
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setTicketToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              isLoading={deletingTicket}
+              onClick={handleDeleteTicket}
+            >
+              Delete Ticket
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

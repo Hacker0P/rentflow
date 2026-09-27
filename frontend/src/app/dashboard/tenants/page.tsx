@@ -8,7 +8,6 @@ import {
   Mail,
   Home,
   AlertCircle,
-  FileText,
   CheckCircle2,
   MessageCircle,
   Building2,
@@ -21,8 +20,15 @@ import {
   X,
   Share2,
   Trash2,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface Tenant {
   id: string;
@@ -99,7 +105,6 @@ export default function TenantsPage() {
       const res = await apiRequest<any[]>('/properties');
       setProperties(res.data);
 
-      // Collect all vacant units
       const units: any[] = [];
       for (const p of res.data) {
         const uRes = await apiRequest<any[]>(`/properties/${p.id}/units`);
@@ -157,7 +162,6 @@ export default function TenantsPage() {
         }),
       });
 
-      // Prepare 1-Tap WhatsApp Welcome Invite Data
       const inviteData: WelcomeInviteData = {
         tenantName: tenantName.trim(),
         tenantPhone: tenantPhone.trim(),
@@ -172,8 +176,6 @@ export default function TenantsPage() {
       setTenantPhone('');
       setTenantEmail('');
       await fetchTenants();
-
-      // Immediately present the 1-Tap WhatsApp Invite Modal!
       setWelcomeInviteModal(inviteData);
     } catch (err: any) {
       setError(err.message || 'Failed to create lease');
@@ -182,10 +184,8 @@ export default function TenantsPage() {
     }
   };
 
-  const [deletingTenantId, setDeletingTenantId] = useState<string | null>(null);
-
   const handleTerminateLease = async (leaseId: string) => {
-    if (!confirm('Are you sure you want to end/terminate this lease? The unit will be marked as vacant, and you will then be able to delete the tenant record if needed.')) return;
+    if (!confirm('Are you sure you want to end this lease? The unit will be marked as vacant.')) return;
     try {
       await apiRequest(`/leases/${leaseId}/terminate`, {
         method: 'PATCH',
@@ -197,21 +197,13 @@ export default function TenantsPage() {
   };
 
   const handleDeleteTenant = async (tenantId: string, tenantName: string) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete tenant "${tenantName}"?\n\nThis will permanently remove the ended tenant profile and their past lease history from your directory. This action cannot be undone.`
-      )
-    ) {
+    if (!confirm(`Are you sure you want to delete tenant "${tenantName}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      setDeletingTenantId(tenantId);
-
-      // 1. Immediately remove from current UI state
       setTenants((prev) => prev.filter((t) => t.id !== tenantId));
 
-      // 2. Persist deleted/hidden status in localStorage
       if (typeof window !== 'undefined') {
         try {
           const hiddenIds: string[] = JSON.parse(localStorage.getItem('rentflow_hidden_tenants') || '[]');
@@ -220,46 +212,29 @@ export default function TenantsPage() {
             localStorage.setItem('rentflow_hidden_tenants', JSON.stringify(hiddenIds));
           }
         } catch {
-          // ignore localStorage JSON error
+          // ignore
         }
       }
 
-      // 3. Sync deletion with backend in background
       try {
         await apiRequest(`/tenants/${tenantId}`, {
           method: 'DELETE',
         });
       } catch (err: any) {
-        // Silently log in console without disturbing user with raw 404 popup
         console.warn('Backend DELETE route sync:', err?.message);
       }
     } catch (err: any) {
       alert(err.message || 'Failed to delete tenant');
-    } finally {
-      setDeletingTenantId(null);
     }
   };
 
-  // Helper to generate formatted WhatsApp invite text & link
   const getWhatsAppInviteDetails = (data: WelcomeInviteData) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://rentflow-mu.vercel.app';
     const loginUrl = `${origin}/login`;
     const cleanPhone = data.tenantPhone.replace(/[^0-9]/g, '');
     const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
-    const message = `Namaste ${data.tenantName} Ji! 🙏
-Welcome to Unit ${data.unitNumber} at ${data.propertyName}.
-
-Your RentFlow portal is active:
-🏠 Monthly Rent: ₹${Number(data.monthlyRent).toLocaleString('en-IN')} (Due ${data.rentDueDay}th of month)
-⚡ Direct UPI Rent Payments (0% Gateway Fees)
-🧾 Instant Verified Rent Receipts
-🛠️ 1-Tap Maintenance & Repair Requests
-
-Check your rent terms, pay via UPI, and download receipts here:
-${loginUrl}
-
-(Log in with your registered mobile: +91 ${cleanPhone.slice(-10)})`;
+    const message = `Namaste ${data.tenantName} Ji! 🙏\nWelcome to Unit ${data.unitNumber} at ${data.propertyName}.\n\nYour RentFlow portal is active:\n🏠 Monthly Rent: ₹${Number(data.monthlyRent).toLocaleString('en-IN')} (Due ${data.rentDueDay}th of month)\n⚡ Direct UPI Rent Payments (0% Gateway Fees)\n🧾 Instant Verified Rent Receipts\n🛠️ 1-Tap Maintenance & Repair Requests\n\nCheck your rent terms, pay via UPI, and download receipts here:\n${loginUrl}\n\n(Log in with your registered mobile: +91 ${cleanPhone.slice(-10)})`;
 
     const waLink = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
 
@@ -272,570 +247,488 @@ ${loginUrl}
     setTimeout(() => setCopiedMessage(false), 2500);
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Tenants &amp; Leases</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Manage tenant directory, active leases, monthly rent, and contract terms.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Tenants & Leases</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Manage your resident directory, active contracts, monthly rent, and welcome invites.
+          </p>
         </div>
-        <button
+        <Button
           onClick={handleOpenModal}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950/20 active:scale-95 transition"
+          leftIcon={<Plus className="w-4 h-4" />}
+          variant="primary"
+          size="md"
         >
-          <Plus className="w-4 h-4" />
-          <span>New Lease Agreement</span>
-        </button>
+          New Lease Agreement
+        </Button>
       </div>
 
       {/* Tenants Content */}
       {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        <div className="flex h-56 items-center justify-center">
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+            <p className="text-xs text-slate-500 font-medium">Loading tenants...</p>
+          </div>
         </div>
       ) : tenants.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center shadow-xs">
-          <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-800">No tenants registered yet</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            Click &quot;New Lease Agreement&quot; to assign a tenant to an available unit, define rent, and send an instant 1-tap WhatsApp welcome invite.
-          </p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No tenants registered yet"
+          description="Create your first lease agreement to assign a tenant to an available unit and generate automatic rent bills."
+          action={{
+            label: 'Create Lease Agreement',
+            onClick: handleOpenModal,
+            icon: <Plus className="w-4 h-4" />,
+          }}
+        />
       ) : (
         <div className="space-y-4">
-          {/* ========================================================================= */}
-          {/* 1. Mobile App Card View (< lg screens)                                    */}
-          {/* ========================================================================= */}
+          {/* Desktop Table View (>= lg screens) */}
+          <div className="hidden lg:block">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="py-3 px-4">Tenant Name</th>
+                      <th className="py-3 px-4">Property & Unit</th>
+                      <th className="py-3 px-4">Monthly Rent</th>
+                      <th className="py-3 px-4">Due Day</th>
+                      <th className="py-3 px-4">Lease Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tenants.map((t) => {
+                      const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
+                      const hasActive = t.leases.some((l) => l.status === 'ACTIVE');
+
+                      return (
+                        <tr key={t.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 border border-blue-200/80 font-bold text-xs flex items-center justify-center shrink-0">
+                                {t.name ? t.name[0].toUpperCase() : 'T'}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-slate-900 block">{t.name}</span>
+                                <span className="text-[11px] text-slate-500 font-mono">{t.phone}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {activeLease ? (
+                              <div>
+                                <span className="font-semibold text-slate-800 block">
+                                  Unit {activeLease.unit.unitNumber}
+                                </span>
+                                <span className="text-[11px] text-slate-500 block">
+                                  {activeLease.unit.property.name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">No assigned unit</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-semibold text-slate-900 font-mono tabular-nums">
+                            {activeLease ? `₹${Number(activeLease.monthlyRent).toLocaleString('en-IN')}` : '—'}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-slate-600">
+                            {activeLease ? `${activeLease.rentDueDay}th of month` : '—'}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <Badge
+                              variant={hasActive ? 'success' : 'neutral'}
+                              size="sm"
+                              dot
+                            >
+                              {hasActive ? 'ACTIVE LEASE' : 'NO ACTIVE LEASE'}
+                            </Badge>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Quick WhatsApp Link */}
+                              <a
+                                href={`https://wa.me/91${t.phone.replace(/[^0-9]/g, '').slice(-10)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Chat on WhatsApp"
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </a>
+
+                              {/* Quick Phone Call */}
+                              <a
+                                href={`tel:${t.phone}`}
+                                title="Call Tenant"
+                                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                              >
+                                <Phone className="w-4 h-4" />
+                              </a>
+
+                              {/* Terminate Lease Button */}
+                              {hasActive && activeLease && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTerminateLease(activeLease.id)}
+                                  className="px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 rounded-lg border border-amber-200 transition-colors"
+                                >
+                                  End Lease
+                                </button>
+                              )}
+
+                              {/* Delete Tenant Button (when lease is ended) */}
+                              {!hasActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTenant(t.id, t.name)}
+                                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title="Delete Tenant"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+
+          {/* Mobile Card View (< lg screens) */}
           <div className="lg:hidden space-y-3">
             {tenants.map((t) => {
               const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
-              const cleanPhone = t.phone ? t.phone.replace(/[^0-9]/g, '') : '';
-
-              const inviteData: WelcomeInviteData | null = activeLease
-                ? {
-                    tenantName: t.name,
-                    tenantPhone: t.phone,
-                    unitNumber: activeLease.unit.unitNumber,
-                    propertyName: activeLease.unit.property.name,
-                    monthlyRent: Number(activeLease.monthlyRent),
-                    rentDueDay: activeLease.rentDueDay,
-                  }
-                : null;
+              const hasActive = t.leases.some((l) => l.status === 'ACTIVE');
 
               return (
-                <div
-                  key={t.id}
-                  className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-3 hover:border-slate-300 transition"
-                >
-                  {/* Top Tenant Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-sm shadow-md shadow-emerald-950/20 shrink-0">
-                        {getInitials(t.name)}
+                <Card key={t.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/80 font-bold text-sm flex items-center justify-center shrink-0">
+                          {t.name ? t.name[0].toUpperCase() : 'T'}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-sm text-slate-900 leading-snug">{t.name}</h3>
+                          <span className="text-xs text-slate-500 font-mono block">{t.phone}</span>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm leading-tight">{t.name}</h4>
-                        {activeLease ? (
-                          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md inline-block mt-1">
-                            Unit {activeLease.unit.unitNumber} • {activeLease.unit.property.name}
+
+                      <Badge
+                        variant={hasActive ? 'success' : 'neutral'}
+                        size="sm"
+                        dot
+                      >
+                        {hasActive ? 'Active' : 'Ended'}
+                      </Badge>
+                    </div>
+
+                    {activeLease && (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Unit</span>
+                          <span className="font-semibold text-slate-800">
+                            Unit {activeLease.unit.unitNumber} ({activeLease.unit.property.name})
                           </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Rent</span>
+                          <span className="font-bold text-slate-900 font-mono tabular-nums">
+                            ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`https://wa.me/91${t.phone.replace(/[^0-9]/g, '').slice(-10)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-medium flex items-center gap-1 border border-emerald-200/80"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </a>
+
+                        <a
+                          href={`tel:${t.phone}`}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div>
+                        {hasActive && activeLease ? (
+                          <button
+                            type="button"
+                            onClick={() => handleTerminateLease(activeLease.id)}
+                            className="px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 rounded-lg border border-amber-200"
+                          >
+                            End Lease
+                          </button>
                         ) : (
-                          <span className="text-[11px] text-slate-400 italic block mt-0.5">No active unit</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTenant(t.id, t.name)}
+                            className="px-2.5 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200"
+                          >
+                            Delete
+                          </button>
                         )}
                       </div>
                     </div>
-
-                    <div>
-                      {activeLease && activeLease.status === 'ACTIVE' ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                          Ended
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Financials & Terms Grid */}
-                  {activeLease && (
-                    <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Rent</span>
-                        <span className="text-xs font-black text-slate-900">
-                          ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Maint</span>
-                        <span className="text-xs font-semibold text-slate-700">
-                          {Number(activeLease.maintenanceAmount) > 0
-                            ? `+₹${Number(activeLease.maintenanceAmount).toLocaleString('en-IN')}`
-                            : 'Included'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Due Day</span>
-                        <span className="text-xs font-semibold text-slate-700">
-                          {activeLease.rentDueDay}th of month
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contact & 1-Tap Invite Row */}
-                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* 1-Tap WhatsApp Welcome Invite Button */}
-                      {inviteData && (
-                        <button
-                          type="button"
-                          onClick={() => setWelcomeInviteModal(inviteData)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] text-xs font-bold border border-[#25D366]/40 transition active:scale-95 shadow-2xs"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                          <span>WhatsApp Invite</span>
-                        </button>
-                      )}
-
-                      {t.phone && (
-                        <a
-                          href={`tel:${cleanPhone}`}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition active:scale-95"
-                        >
-                          <Phone className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Call</span>
-                        </a>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {activeLease && activeLease.status === 'ACTIVE' ? (
-                        <button
-                          onClick={() => handleTerminateLease(activeLease.id)}
-                          className="px-2.5 py-1 rounded-xl text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[11px] font-semibold transition"
-                          title="End active lease"
-                        >
-                          End Lease
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleDeleteTenant(t.id, t.name)}
-                          disabled={deletingTenantId === t.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-[11px] font-bold transition disabled:opacity-50"
-                          title="Delete ended tenant from directory"
-                        >
-                          <Trash2 className="w-3 h-3 text-rose-500" />
-                          <span>{deletingTenantId === t.id ? 'Deleting...' : 'Delete'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               );
             })}
-          </div>
-
-          {/* ========================================================================= */}
-          {/* 2. Desktop Full Table View (>= lg screens)                                */}
-          {/* ========================================================================= */}
-          <div className="hidden lg:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3.5 px-4">Tenant Name</th>
-                    <th className="py-3.5 px-4">Contact Info</th>
-                    <th className="py-3.5 px-4">Unit / Property</th>
-                    <th className="py-3.5 px-4">Monthly Rent + Maint</th>
-                    <th className="py-3.5 px-4">Due Day</th>
-                    <th className="py-3.5 px-4">Lease Status</th>
-                    <th className="py-3.5 px-4 text-right">1-Tap WhatsApp &amp; Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {tenants.map((t) => {
-                    const activeLease = t.leases.find((l) => l.status === 'ACTIVE') || t.leases[0];
-                    const cleanPhone = t.phone ? t.phone.replace(/[^0-9]/g, '') : '';
-
-                    const inviteData: WelcomeInviteData | null = activeLease
-                      ? {
-                          tenantName: t.name,
-                          tenantPhone: t.phone,
-                          unitNumber: activeLease.unit.unitNumber,
-                          propertyName: activeLease.unit.property.name,
-                          monthlyRent: Number(activeLease.monthlyRent),
-                          rentDueDay: activeLease.rentDueDay,
-                        }
-                      : null;
-
-                    return (
-                      <tr key={t.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4 px-4 font-bold text-slate-900 text-xs">
-                          {t.name}
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className="text-slate-700 flex items-center gap-1 font-mono text-[11px]">
-                            <Phone className="w-3 h-3 text-slate-400" />
-                            {t.phone}
-                          </span>
-                          {t.email && (
-                            <span className="text-slate-400 flex items-center gap-1 text-[11px] mt-0.5">
-                              <Mail className="w-3 h-3 text-slate-400" />
-                              {t.email}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4">
-                          {activeLease ? (
-                            <div>
-                              <span className="font-semibold text-slate-800 block text-xs">
-                                Unit {activeLease.unit.unitNumber}
-                              </span>
-                              <span className="text-[11px] text-slate-500">
-                                {activeLease.unit.property.name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">No active unit</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 font-bold text-slate-900">
-                          {activeLease ? (
-                            <>
-                              ₹{Number(activeLease.monthlyRent).toLocaleString('en-IN')}
-                              {Number(activeLease.maintenanceAmount) > 0 && (
-                                <span className="text-[11px] font-normal text-slate-500 block">
-                                  + ₹{Number(activeLease.maintenanceAmount).toLocaleString('en-IN')} maint
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-slate-700">
-                          {activeLease ? `${activeLease.rentDueDay}th of month` : '—'}
-                        </td>
-                        <td className="py-4 px-4">
-                          {activeLease && activeLease.status === 'ACTIVE' ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                              Active Lease
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
-                              Ended
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {inviteData && (
-                              <button
-                                type="button"
-                                onClick={() => setWelcomeInviteModal(inviteData)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] font-bold text-xs border border-[#25D366]/40 transition active:scale-95"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                                <span>WhatsApp Invite</span>
-                              </button>
-                            )}
-
-                            {activeLease && activeLease.status === 'ACTIVE' ? (
-                              <button
-                                onClick={() => handleTerminateLease(activeLease.id)}
-                                className="px-2.5 py-1.5 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-xs font-semibold transition"
-                                title="End active lease and mark unit as vacant"
-                              >
-                                End Lease
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleDeleteTenant(t.id, t.name)}
-                                disabled={deletingTenantId === t.id}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 text-xs font-bold transition disabled:opacity-50"
-                                title="Delete ended tenant from directory"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                <span>{deletingTenantId === t.id ? 'Deleting...' : 'Delete Tenant'}</span>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 3. 1-Tap WhatsApp Welcome & Portal Invite Modal                            */}
-      {/* ========================================================================= */}
-      {welcomeInviteModal && (() => {
-        const { message, waLink, cleanPhone } = getWhatsAppInviteDetails(welcomeInviteModal);
+      {/* Modal 1: New Lease Agreement */}
+      <Modal
+        isOpen={showAddLease}
+        onClose={() => setShowAddLease(false)}
+        title="New Lease Agreement"
+        description="Assign a tenant to an available unit and define monthly terms."
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateLease} className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        return (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-7 border border-slate-100 space-y-5 animate-in zoom-in-95 relative text-slate-900 max-h-[90vh] overflow-y-auto">
-              <button
-                type="button"
-                onClick={() => setWelcomeInviteModal(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:bg-slate-100 transition"
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Select Vacant Unit *
+            </label>
+            {availableUnits.length === 0 ? (
+              <p className="text-xs text-rose-600 font-medium">
+                No vacant units found. Please add a property and vacant unit first.
+              </p>
+            ) : (
+              <select
+                required
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
               >
-                <X className="w-5 h-5" />
-              </button>
+                {availableUnits.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.propertyName} - Unit {u.unitNumber} {u.floor ? `(Floor ${u.floor})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
-              {/* Celebration Header */}
-              <div className="flex items-start gap-3.5 pt-1">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white flex items-center justify-center font-bold shadow-lg shadow-[#25D366]/30 shrink-0">
-                  <MessageCircle className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold mb-1">
-                    <Sparkles className="w-3 h-3 text-emerald-600" />
-                    <span>Lease Created &amp; Tenant Ready!</span>
-                  </div>
-                  <h3 className="font-black text-slate-900 text-lg leading-tight">
-                    Send WhatsApp Welcome Invite
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Welcome <span className="font-bold text-slate-800">{welcomeInviteModal.tenantName}</span> to Unit {welcomeInviteModal.unitNumber}. Send their login link with 1 tap.
-                  </p>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Tenant Full Name *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Rahul Sharma"
+                value={tenantName}
+                onChange={(e) => setTenantName(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+              />
+            </div>
 
-              {/* Formatted WhatsApp Message Preview Bubble */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs px-1">
-                  <span className="font-bold text-slate-600 flex items-center gap-1.5">
-                    <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                    <span>WhatsApp Message Preview</span>
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium">To: +91 {cleanPhone.slice(-10)}</span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#E7F8E8] border border-[#25D366]/30 text-xs text-slate-800 whitespace-pre-line leading-relaxed font-sans shadow-inner select-text">
-                  {message}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-2.5 pt-1">
-                {/* 1-Tap WhatsApp Primary CTA */}
-                <a
-                  href={waLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 px-5 rounded-2xl bg-[#25D366] hover:bg-[#1EBE5D] active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-[#25D366]/30 transition flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  <span>Send WhatsApp Welcome Invite</span>
-                  <ExternalLink className="w-4 h-4 ml-0.5 opacity-80" />
-                </a>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Copy Message Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleCopyMessage(message)}
-                    className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
-                  >
-                    {copiedMessage ? (
-                      <>
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span className="text-emerald-700 font-extrabold">Copied to Clipboard!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4 text-slate-500" />
-                        <span>Copy Invite Text</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Close / Done Button */}
-                  <button
-                    type="button"
-                    onClick={() => setWelcomeInviteModal(null)}
-                    className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Phone Number (WhatsApp) *
+              </label>
+              <input
+                type="tel"
+                required
+                placeholder="e.g. 9811223344"
+                value={tenantPhone}
+                onChange={(e) => setTenantPhone(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition font-mono"
+              />
             </div>
           </div>
-        );
-      })()}
 
-      {/* ========================================================================= */}
-      {/* 4. New Lease Agreement Modal                                              */}
-      {/* ========================================================================= */}
-      {showAddLease && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-slate-900 text-base mb-1">New Lease Agreement</h3>
-            <p className="text-xs text-slate-500 mb-4">Assign a tenant to an available unit and specify rent terms.</p>
-
-            {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs flex items-center gap-2 border border-rose-200">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCreateLease} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Select Available Vacant Unit</label>
-                {availableUnits.length === 0 ? (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                    No vacant units found. Please add a unit or terminate an existing lease first.
-                  </div>
-                ) : (
-                  <select
-                    value={selectedUnitId}
-                    onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none bg-white font-medium"
-                  >
-                    {availableUnits.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unitNumber} — {u.propertyName}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tenant Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={tenantName}
-                    onChange={(e) => setTenantName(e.target.value)}
-                    placeholder="Amit Kumar"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tenant Phone Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={tenantPhone}
-                    onChange={(e) => setTenantPhone(e.target.value)}
-                    placeholder="+91-9876543210"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Tenant Email (Optional)</label>
-                <input
-                  type="email"
-                  value={tenantEmail}
-                  onChange={(e) => setTenantEmail(e.target.value)}
-                  placeholder="amit.kumar@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Monthly Rent (₹)</label>
-                  <input
-                    type="number"
-                    required
-                    min={0}
-                    value={monthlyRent}
-                    onChange={(e) => setMonthlyRent(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Maintenance Amount (₹)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={maintenanceAmount}
-                    onChange={(e) => setMaintenanceAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Security Deposit (₹)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={securityDeposit}
-                    onChange={(e) => setSecurityDeposit(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Rent Due Day (1 to 28)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    max={28}
-                    value={rentDueDay}
-                    onChange={(e) => setRentDueDay(parseInt(e.target.value) || 1)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Lease Start Date</label>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddLease(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || availableUnits.length === 0}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50"
-                >
-                  {submitting ? 'Creating...' : 'Activate Lease & Invite Tenant'}
-                </button>
-              </div>
-            </form>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Email Address (Optional)
+            </label>
+            <input
+              type="email"
+              placeholder="e.g. rahul@example.com"
+              value={tenantEmail}
+              onChange={(e) => setTenantEmail(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+            />
           </div>
-        </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Monthly Rent (₹) *
+              </label>
+              <input
+                type="number"
+                required
+                min={0}
+                placeholder="15000"
+                value={monthlyRent}
+                onChange={(e) => setMonthlyRent(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Maintenance (₹)
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="2000"
+                value={maintenanceAmount}
+                onChange={(e) => setMaintenanceAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Rent Due Day *
+              </label>
+              <select
+                value={rentDueDay}
+                onChange={(e) => setRentDueDay(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
+              >
+                {[1, 5, 10, 15, 20, 25].map((d) => (
+                  <option key={d} value={d}>
+                    {d}th of every month
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setShowAddLease(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={submitting}
+              disabled={availableUnits.length === 0}
+            >
+              Create Agreement & Send Invite
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 2: 1-Tap WhatsApp Welcome Invite */}
+      {welcomeInviteModal && (
+        <Modal
+          isOpen={true}
+          onClose={() => setWelcomeInviteModal(null)}
+          title="Lease Created Successfully!"
+          description="Send the tenant their RentFlow portal invite via WhatsApp."
+          maxWidth="md"
+        >
+          {(() => {
+            const { message, waLink } = getWhatsAppInviteDetails(welcomeInviteModal);
+
+            return (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    Lease assigned to <strong>{welcomeInviteModal.tenantName}</strong> for <strong>Unit {welcomeInviteModal.unitNumber}</strong>.
+                  </span>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      WhatsApp Invite Preview
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMessage(message)}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                    >
+                      {copiedMessage ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedMessage ? 'Copied' : 'Copy Text'}</span>
+                    </button>
+                  </div>
+                  <pre className="p-3.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-800 font-mono whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                    {message}
+                  </pre>
+                </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    className="w-full sm:w-auto"
+                    onClick={() => setWelcomeInviteModal(null)}
+                  >
+                    Done / Close
+                  </Button>
+
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto"
+                  >
+                    <Button
+                      type="button"
+                      variant="success"
+                      size="md"
+                      className="w-full"
+                      leftIcon={<MessageCircle className="w-4 h-4" />}
+                    >
+                      Send WhatsApp Welcome Invite
+                    </Button>
+                  </a>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
       )}
     </div>
   );

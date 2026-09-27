@@ -24,6 +24,9 @@ import {
   Smartphone,
   Download,
 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface ProfileData {
   id: string;
@@ -75,9 +78,11 @@ export default function SettingsPage() {
         setBankName(res.data.bankName || '');
         setBankAccountNumber(res.data.bankAccountNumber || '');
         setBankIfsc(res.data.bankIfsc || '');
-        
-        // Ensure image URL is valid and discard any dummy test strings
-        const rawQr = res.data.qrImageUrl || (typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null);
+
+        const rawQr =
+          res.data.qrImageUrl ||
+          (typeof window !== 'undefined' ? localStorage.getItem('rentflow_landlord_qr') : null);
+
         if (
           rawQr &&
           (rawQr.startsWith('data:image/') || rawQr.startsWith('http://') || rawQr.startsWith('https://')) &&
@@ -111,7 +116,6 @@ export default function SettingsPage() {
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        // Compress using offscreen canvas to max 600x600 for instant mobile loading
         const canvas = document.createElement('canvas');
         const maxDim = 600;
         let width = img.width;
@@ -166,7 +170,6 @@ export default function SettingsPage() {
     setErrorMessage('');
 
     try {
-      // Immediate local caching for instant mobile responsiveness
       if (typeof window !== 'undefined') {
         if (qrImageUrl) {
           localStorage.setItem('rentflow_landlord_qr', qrImageUrl);
@@ -175,49 +178,25 @@ export default function SettingsPage() {
         }
       }
 
-      let res;
-      try {
-        res = await apiRequest<ProfileData>('/users/profile', {
-          method: 'PATCH',
-          body: JSON.stringify({
-            name: name.trim(),
-            phone: phone.trim() || undefined,
-            upiId: upiId.trim() || undefined,
-            panNumber: panNumber.trim().toUpperCase() || undefined,
-            bankName: bankName.trim() || undefined,
-            bankAccountNumber: bankAccountNumber.trim() || undefined,
-            bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
-            qrImageUrl: qrImageUrl || '',
-          }),
-        });
-      } catch (patchErr: any) {
-        // Fallback if backend is still deploying with the new qrImageUrl field
-        const errMsg = String(patchErr?.message || '');
-        if (errMsg.toLowerCase().includes('qrimageurl')) {
-          res = await apiRequest<ProfileData>('/users/profile', {
-            method: 'PATCH',
-            body: JSON.stringify({
-              name: name.trim(),
-              phone: phone.trim() || undefined,
-              upiId: upiId.trim() || undefined,
-              panNumber: panNumber.trim().toUpperCase() || undefined,
-              bankName: bankName.trim() || undefined,
-              bankAccountNumber: bankAccountNumber.trim() || undefined,
-              bankIfsc: bankIfsc.trim().toUpperCase() || undefined,
-            }),
-          });
-        } else {
-          throw patchErr;
-        }
-      }
+      await apiRequest('/users/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim() || null,
+          upiId: upiId.trim() || null,
+          panNumber: panNumber.trim().toUpperCase() || null,
+          bankName: bankName.trim() || null,
+          bankAccountNumber: bankAccountNumber.trim() || null,
+          bankIfsc: bankIfsc.trim().toUpperCase() || null,
+          qrImageUrl: qrImageUrl || null,
+        }),
+      });
 
-      if (res && res.data) {
-        setProfile({ ...res.data, qrImageUrl: qrImageUrl || res.data.qrImageUrl });
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 4500);
-      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+      await fetchProfile();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to update settings');
+      setErrorMessage(err.message || 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -232,207 +211,204 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-          <p className="text-xs font-semibold text-slate-500">Loading payout settings...</p>
+      <div className="flex h-56 items-center justify-center">
+        <div className="flex flex-col items-center gap-2.5">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+          <p className="text-xs text-slate-500 font-medium">Loading settings...</p>
         </div>
       </div>
     );
   }
 
-  const sampleUpiUrl = `upi://pay?pa=${encodeURIComponent(upiId || 'landlord@upi')}&pn=${encodeURIComponent(
-    name || 'Landlord'
-  )}&cu=INR`;
-
-  const sampleQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-    sampleUpiUrl
-  )}`;
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-16">
-      {/* Top Banner */}
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Header */}
       <div>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Payout & Account Settings
-        </h2>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Payout & Account Settings</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Configure how tenants pay you. These details populate automatically across all digital bills, UPI QR codes, and HRA tax receipts.
+          Configure direct UPI payouts with 0% gateway deductions, bank details, and landlord tax receipts.
         </p>
       </div>
 
       {saveSuccess && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-800 shadow-sm animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <div className="text-xs font-bold">
-            Settings saved successfully! Future invoices, tenant UPI links, and custom QR codes are now active.
-          </div>
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>All changes and payout details have been saved successfully!</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-3 text-rose-800 shadow-sm animate-in fade-in">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          <div className="text-xs font-semibold">{errorMessage}</div>
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMessage}</span>
         </div>
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* ========================================================================= */}
-        {/* Section 1: UPI & Custom QR Code Photo Upload                              */}
-        {/* ========================================================================= */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-wrap gap-2">
+        {/* Section 1: UPI ID Setup */}
+        <Card>
+          <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
-                <QrCode className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/80">
+                <QrCode className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                  Instant UPI & QR Code Collection
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-500">
-                  Tenants scan via Google Pay, PhonePe, Paytm, or BHIM.
-                </p>
+                <CardTitle>Direct UPI Payment ID</CardTitle>
+                <CardDescription>
+                  Tenants pay directly to this UPI address with 0% gateway commissions.
+                </CardDescription>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <Sparkles className="w-3 h-3 text-emerald-600" /> 0% Gateway Fee
-            </span>
-          </div>
+            <Badge variant="success" size="sm">
+              0% Fee
+            </Badge>
+          </CardHeader>
 
-          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-4">
-              {/* UPI ID Field */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Your UPI ID (VPA) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="e.g. yourname@okhdfcbank or 9876543210@paytm"
-                    className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                  />
-                  {upiId && (
-                    <button
-                      type="button"
-                      onClick={copyUpiToClipboard}
-                      className="absolute right-3 top-3 text-xs text-slate-400 hover:text-emerald-600 flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 font-semibold active:scale-95 transition"
-                    >
-                      {copiedUpi ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  100% of rent goes straight to your bank account without any intermediary holding funds.
-                </p>
-              </div>
-
-              {/* Upload QR Photo Card */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Camera className="w-4 h-4 text-emerald-600" />
-                    <span>Upload Your Own Payment QR Photo</span>
-                  </span>
-                  {!imageError && qrImageUrl && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                      Custom QR Active
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Have a printed QR stand or screenshot from PhonePe, GPay, or Paytm? Upload it directly from your phone gallery or take a photo. This exact photo will be shown to your tenants!
-                </p>
-
-                {/* Upload & Remove Action Buttons */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="qr-upload-input"
-                  />
-
-                  <label
-                    htmlFor="qr-upload-input"
-                    className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-md shadow-emerald-950/20 transition text-center"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{!imageError && qrImageUrl ? 'Change QR Photo' : 'Upload QR from Photos / Camera'}</span>
-                  </label>
-
-                  {!imageError && qrImageUrl && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveQrImage}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 text-xs font-bold border border-rose-200 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                      <span>Remove Photo</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* QR Code Visual Preview Box */}
-            <div className="flex flex-col items-center justify-center p-5 rounded-2xl bg-gradient-to-b from-slate-50 to-slate-100 border border-slate-200 text-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                Tenant QR Display
-              </span>
-
-              <div className="w-40 h-40 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={!imageError && qrImageUrl ? qrImageUrl : sampleQrUrl}
-                  alt="Tenant Payment QR Code"
-                  className="w-full h-full object-contain rounded-xl"
-                  onError={() => {
-                    setImageError(true);
-                  }}
-                />
-              </div>
-
-              <div className="mt-3 space-y-1">
-                <span className="text-xs font-bold text-slate-900 block truncate max-w-[190px]">
-                  {name || 'Landlord Name'}
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full inline-block truncate max-w-[190px] border bg-emerald-50 text-emerald-800 border-emerald-200">
-                  {!imageError && qrImageUrl ? 'Photo QR Active' : (upiId || 'upi-id@bank')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* Section 2: Direct Bank Account (Wire Transfer / IMPS / NEFT)              */}
-        {/* ========================================================================= */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-            <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
-              <Building className="w-5 h-5" />
-            </div>
+          <CardContent className="space-y-4">
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Direct Bank Account (NEFT / IMPS)
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-500">
-                Optional payout details displayed on monthly bills for bank transfers.
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Your UPI VPA / Handle *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value.toLowerCase().trim())}
+                  placeholder="e.g. rahul@okaxis, 9811223344@paytm"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+                  required
+                />
+                {upiId && (
+                  <button
+                    type="button"
+                    onClick={copyUpiToClipboard}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 text-xs font-medium flex items-center gap-1 rounded-lg hover:bg-slate-100"
+                  >
+                    {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                Supports Google Pay, PhonePe, Paytm, BHIM, CRED, Amazon Pay, or any Indian banking app.
               </p>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+        {/* Section 2: QR Code Upload */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-200/80">
+                <Camera className="w-4 h-4" />
+              </div>
+              <div>
+                <CardTitle>Physical Standee / QR Photo</CardTitle>
+                <CardDescription>
+                  Upload a photo of your GPay/PhonePe standee QR code to display in tenant payment flows.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              {/* Preview Area */}
+              <div className="w-36 h-36 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 relative group">
+                {qrImageUrl && !imageError ? (
+                  <>
+                    <img
+                      src={qrImageUrl}
+                      alt="Landlord Payment QR"
+                      className="w-full h-full object-contain p-2"
+                      onError={() => setImageError(true)}
+                    />
+                    <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2 rounded-xl bg-white text-slate-800 shadow-md hover:scale-105 transition"
+                        title="Replace Photo"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveQrImage}
+                        className="p-2 rounded-xl bg-rose-600 text-white shadow-md hover:scale-105 transition"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-3 text-slate-400">
+                    <ImageIcon className="w-8 h-8 mx-auto mb-1 text-slate-300" />
+                    <span className="text-[11px] block font-medium">No QR Uploaded</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Controls */}
+              <div className="space-y-2 flex-1 text-center sm:text-left">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={() => fileInputRef.current?.click()}
+                  leftIcon={<Upload className="w-4 h-4" />}
+                >
+                  {qrImageUrl ? 'Change QR Photo' : 'Upload QR Standee Image'}
+                </Button>
+                {qrImageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="md"
+                    onClick={handleRemoveQrImage}
+                    leftIcon={<Trash2 className="w-4 h-4 text-rose-600" />}
+                    className="ml-2 text-rose-600 hover:text-rose-700"
+                  >
+                    Remove
+                  </Button>
+                )}
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Supports JPEG, PNG, or WEBP up to 10MB. Images are automatically optimized for fast mobile loading.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Section 3: Bank Account Details */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200/80">
+                <Building className="w-4 h-4" />
+              </div>
+              <div>
+                <CardTitle>Bank Account Details (NEFT / IMPS)</CardTitle>
+                <CardDescription>
+                  Displayed as fallback for tenants paying via corporate or net banking.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                 Bank Name
               </label>
               <input
@@ -440,125 +416,107 @@ export default function SettingsPage() {
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
                 placeholder="e.g. HDFC Bank, ICICI Bank"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                 Account Number
               </label>
               <input
                 type="text"
                 value={bankAccountNumber}
                 onChange={(e) => setBankAccountNumber(e.target.value)}
-                placeholder="e.g. 50100492817291"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="e.g. 50100298112233"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                 IFSC Code
               </label>
               <input
                 type="text"
                 value={bankIfsc}
                 onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
-                placeholder="e.g. HDFC0000123"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-bold font-mono text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="e.g. HDFC0001234"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
               />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* ========================================================================= */}
-        {/* Section 3: Tax Compliance (PAN for HRA Receipts)                         */}
-        {/* ========================================================================= */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-wrap gap-2">
+        {/* Section 4: Income Tax PAN */}
+        <Card>
+          <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold shrink-0">
-                <FileText className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200/80">
+                <FileText className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                  Income Tax PAN & HRA Exemption
-                </h3>
-                <p className="text-[11px] sm:text-xs text-slate-500">
-                  Required for valid Section 10(13A) rent receipts when annual rent exceeds ₹1 Lakh.
-                </p>
+                <CardTitle>Landlord PAN (For Tenant HRA Exemption)</CardTitle>
+                <CardDescription>
+                  Printed automatically on monthly rent receipts and annual HRA declaration forms.
+                </CardDescription>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-700" /> Sec 10(13A)
-            </span>
-          </div>
+          </CardHeader>
 
-          <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-start">
+          <CardContent className="space-y-3">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Landlord PAN Number
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                10-Digit PAN Number
               </label>
               <input
                 type="text"
                 value={panNumber}
                 onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
-                placeholder="e.g. ABCPS1234F"
+                placeholder="e.g. ABCDE1234F"
                 maxLength={10}
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-bold font-mono tracking-wider text-slate-900 uppercase focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
+                className="w-full sm:w-72 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono uppercase tracking-wider text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
               />
               <p className="text-[11px] text-slate-500 mt-1.5">
-                This PAN appears automatically on all generated monthly rent receipts and annual HRA certificates.
+                Salaried tenants require their landlord&apos;s PAN to claim HRA tax deduction from their employers.
               </p>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1">
-              <span className="font-bold flex items-center gap-1.5 text-amber-900">
-                <ShieldCheck className="w-4 h-4 text-amber-600" /> Why this matters:
-              </span>
-              <p className="text-[11px] leading-relaxed text-amber-900/90">
-                Salaried tenants must submit their landlord&apos;s PAN to HR for income tax exemption. Adding this once saves your tenants from repeatedly asking for your PAN!
-              </p>
+        {/* Section 5: Profile Details */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200/80">
+                <User className="w-4 h-4" />
+              </div>
+              <div>
+                <CardTitle>Landlord Profile</CardTitle>
+                <CardDescription>
+                  Used in tenant notices, invoice signatures, and WhatsApp templates.
+                </CardDescription>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardHeader>
 
-        {/* ========================================================================= */}
-        {/* Section 4: Landlord Profile & Contact                                     */}
-        {/* ========================================================================= */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
-          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
-              <User className="w-5 h-5" />
-            </div>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Landlord Profile & Notifications
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-500">
-                Used in WhatsApp rent reminders and tenant communication channels.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Full Name <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Full Name *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Rahul Sharma"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                 Phone Number (WhatsApp)
               </label>
               <input
@@ -566,88 +524,81 @@ export default function SettingsPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91-9811223344"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition font-mono"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                Account Email (Login)
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Login Email
               </label>
               <input
                 type="email"
                 value={profile?.email || ''}
                 disabled
-                className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-100 text-sm font-medium text-slate-500 cursor-not-allowed"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-sm text-slate-500 cursor-not-allowed"
               />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* ========================================================================= */}
-        {/* Section 5: Mobile App & PWA                                               */}
-        {/* ========================================================================= */}
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 rounded-3xl border border-emerald-500/20 text-white p-6 shadow-xl relative overflow-hidden">
+        {/* Section 6: Mobile PWA Card */}
+        <div className="bg-slate-950 rounded-2xl border border-slate-800 text-white p-6 shadow-xl relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/30 shrink-0">
-                <Smartphone className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-blue-950/40">
+                <Smartphone className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-white">RentFlow Mobile App (PWA)</h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider">
-                    Instant Install
-                  </span>
+                  <h3 className="text-base font-semibold text-white">RentFlow Mobile App (PWA)</h3>
+                  <Badge variant="brand" size="sm">
+                    PWA
+                  </Badge>
                 </div>
                 <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-                  Install RentFlow on your Android phone or iPhone home screen. Launches fullscreen with fast performance and <strong>no browser URL address bar</strong>.
+                  Install RentFlow on your Android phone or iPhone home screen. Launches fullscreen with 1-tap and no browser URL bar.
                 </p>
-                <div className="flex items-center gap-4 pt-1 text-[11px] text-emerald-400 font-medium">
-                  <span>✓ 1-Tap Home Screen Access</span>
-                  <span>✓ Fullscreen Native Feel</span>
-                  <span>✓ Works on Android &amp; iOS</span>
+                <div className="flex items-center gap-3 pt-1 text-[11px] text-blue-400 font-medium">
+                  <span>✓ 1-Tap Home Screen</span>
+                  <span>✓ Standalone Fullscreen</span>
+                  <span>✓ Android &amp; iOS</span>
                 </div>
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               onClick={() => {
                 if (typeof window !== 'undefined') {
                   window.dispatchEvent(new Event('rentflow-trigger-pwa-install'));
                 }
               }}
-              className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition cursor-pointer"
+              leftIcon={<Download className="w-4 h-4" />}
+              className="w-full sm:w-auto shrink-0"
             >
-              <Download className="w-4 h-4" />
-              <span>Install RentFlow App</span>
-            </button>
+              Install App on Phone
+            </Button>
           </div>
         </div>
 
         {/* Action Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
           <p className="text-xs text-slate-500 text-center sm:text-left">
-            Changes are securely stored and synced across tenant apps immediately.
+            Preferences sync immediately across tenant rent apps and receipts.
           </p>
-          <button
+          <Button
             type="submit"
-            disabled={saving}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-sm shadow-lg shadow-emerald-950/20 transition disabled:opacity-50"
+            variant="primary"
+            size="lg"
+            isLoading={saving}
+            leftIcon={<CheckCircle2 className="w-4 h-4" />}
+            className="w-full sm:w-auto px-8"
           >
-            {saving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving Preferences...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Save All Preferences</span>
-              </>
-            )}
-          </button>
+            Save All Preferences
+          </Button>
         </div>
       </form>
     </div>

@@ -12,12 +12,11 @@ import {
 export function LandlordBottomNav({ isInsideFrame = false }: { isInsideFrame?: boolean }) {
   const pathname = usePathname();
 
-  // 4 Core Icons on Mobile Bottom Navigation for optimal spacing and touch targets
   const tabs = [
     { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Units', href: '/dashboard/properties', icon: Building2 },
+    { label: 'Properties', href: '/dashboard/properties', icon: Building2 },
     { label: 'Tenants', href: '/dashboard/tenants', icon: Users },
-    { label: 'Billing', href: '/dashboard/invoices', icon: ReceiptText },
+    { label: 'Invoices', href: '/dashboard/invoices', icon: ReceiptText },
   ];
 
   const positionClass = isInsideFrame
@@ -26,7 +25,7 @@ export function LandlordBottomNav({ isInsideFrame = false }: { isInsideFrame?: b
 
   return (
     <nav
-      className={`${positionClass} z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-3 pt-2 pb-3.5 sm:pb-2 flex items-center justify-around shadow-2xl shadow-slate-900/10 select-none`}
+      className={`${positionClass} z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-3 pt-2 pb-3.5 sm:pb-2 flex items-center justify-around shadow-lg shadow-slate-900/5 select-none`}
     >
       {tabs.map((tab) => {
         const Icon = tab.icon;
@@ -39,15 +38,15 @@ export function LandlordBottomNav({ isInsideFrame = false }: { isInsideFrame?: b
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-1 px-2 rounded-2xl transition active:scale-95 text-center ${
+            className={`flex-1 flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition active:scale-95 text-center ${
               isActive
-                ? 'text-emerald-700 font-extrabold'
-                : 'text-slate-400 hover:text-slate-700'
+                ? 'text-blue-600 font-semibold'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <div
-              className={`p-1.5 rounded-xl transition ${
-                isActive ? 'bg-emerald-500/15 text-emerald-700 shadow-xs' : 'text-slate-500'
+              className={`p-1.5 rounded-xl transition-colors ${
+                isActive ? 'bg-blue-50 text-blue-600' : 'text-slate-500'
               }`}
             >
               <Icon className="w-5 h-5" />

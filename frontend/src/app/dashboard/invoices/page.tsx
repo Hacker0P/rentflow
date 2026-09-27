@@ -19,6 +19,11 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
 import { WhatsAppModal, WhatsAppReminderData } from '@/components/whatsapp-modal';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface Invoice {
   id: string;
@@ -125,7 +130,6 @@ export default function InvoicesPage() {
       setPayingInvoice(null);
       await fetchInvoices();
 
-      // Automatically offer to send WhatsApp receipt
       if (invToAcknowledge && invToAcknowledge.lease?.tenant?.phone) {
         setWhatsAppModalData({
           invoiceId: invToAcknowledge.id,
@@ -188,528 +192,465 @@ export default function InvoicesPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PAID':
-        return (
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200/60 inline-flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Paid
-          </span>
-        );
-      case 'PARTIALLY_PAID':
-        return (
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200/60 inline-flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Partial
-          </span>
-        );
+        return <Badge variant="success" size="sm" dot>Paid</Badge>;
       case 'OVERDUE':
-        return (
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200/60 inline-flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Overdue
-          </span>
-        );
+        return <Badge variant="error" size="sm" dot>Overdue</Badge>;
+      case 'PARTIALLY_PAID':
+        return <Badge variant="info" size="sm" dot>Partial</Badge>;
+      case 'PENDING':
       default:
-        return (
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200/60 inline-flex items-center gap-1">
-            <Clock className="w-3 h-3" /> Pending
-          </span>
-        );
+        return <Badge variant="warning" size="sm" dot>Pending</Badge>;
     }
   };
 
-  const filterTabs = [
-    { id: 'ALL' as const, label: 'All', count: allCount },
-    { id: 'PENDING' as const, label: 'Pending', count: pendingCount },
-    { id: 'OVERDUE' as const, label: 'Overdue', count: overdueCount },
-    { id: 'PAID' as const, label: 'Paid', count: paidCount },
-  ];
-
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-8">
+    <div className="space-y-6 max-w-7xl mx-auto pb-8">
       {/* Header */}
-      <div>
-        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-          Billing & Invoices
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Rent slips, due dates, outstanding balances, and verified receipts.
-        </p>
-      </div>
-
-      {/* Top Financial Summary Pills */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-        <div className="p-3 sm:p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs text-center sm:text-left">
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            Total Billed
-          </span>
-          <span className="text-sm sm:text-xl font-black text-slate-900 block mt-0.5">
-            ₹{totalBilled.toLocaleString('en-IN')}
-          </span>
-        </div>
-
-        <div className="p-3 sm:p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 shadow-xs text-center sm:text-left">
-          <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
-            Collected
-          </span>
-          <span className="text-sm sm:text-xl font-black text-emerald-700 block mt-0.5">
-            ₹{totalCollected.toLocaleString('en-IN')}
-          </span>
-        </div>
-
-        <div className="p-3 sm:p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 shadow-xs text-center sm:text-left">
-          <span className="text-[10px] sm:text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
-            Remaining
-          </span>
-          <span className="text-sm sm:text-xl font-black text-amber-700 block mt-0.5">
-            ₹{totalRemaining.toLocaleString('en-IN')}
-          </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Invoices & Billing</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Track rent requests, collect payments via UPI, and issue verified rent receipts.
+          </p>
         </div>
       </div>
 
-      {/* Full-Width 4-Column Segmented Tab Bar (Zero Horizontal Sliding on Mobile) */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-4 gap-1 p-1 bg-slate-200/80 rounded-2xl w-full select-none">
-          {filterTabs.map((t) => {
-            const active = filter === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setFilter(t.id)}
-                className={`py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 ${
-                  active
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-slate-500 font-medium block">Total Invoiced</span>
+              <span className="text-xl font-bold text-slate-900 font-mono tabular-nums">
+                ₹{totalBilled.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+              <ReceiptText className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-emerald-700 font-medium block">Total Collected</span>
+              <span className="text-xl font-bold text-emerald-600 font-mono tabular-nums">
+                ₹{totalCollected.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <span className="text-xs text-amber-800 font-medium block">Outstanding Balance</span>
+              <span className="text-xl font-bold text-amber-700 font-mono tabular-nums">
+                ₹{totalRemaining.toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Tabs & Search Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          {[
+            { key: 'ALL', label: 'All', count: allCount },
+            { key: 'PENDING', label: 'Pending', count: pendingCount },
+            { key: 'OVERDUE', label: 'Overdue', count: overdueCount },
+            { key: 'PAID', label: 'Paid', count: paidCount },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key as any)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 ${
+                filter === tab.key
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  filter === tab.key ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                <span>{t.label}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-tight ${
-                    active ? 'bg-slate-100 text-slate-800' : 'bg-slate-300/70 text-slate-600'
-                  }`}
-                >
-                  {t.count}
-                </span>
-              </button>
-            );
-          })}
+                {tab.count}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        <div className="relative sm:w-64">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            placeholder="Search tenant, unit, building..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tenant name, unit number, or property..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border border-slate-200/80 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition shadow-xs"
+            className="w-full pl-9 pr-3.5 py-1.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 bg-white"
           />
         </div>
       </div>
 
-      {/* Invoices List / Table */}
+      {/* Content */}
       {loading ? (
-        <div className="flex h-48 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        <div className="flex h-56 items-center justify-center">
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+            <p className="text-xs text-slate-500 font-medium">Loading invoices...</p>
+          </div>
         </div>
       ) : filteredInvoices.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-12 text-center shadow-xs">
-          <ReceiptText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-800">No invoices in this view</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-            {searchQuery
-              ? `No invoices matched "${searchQuery}". Clear your search query.`
-              : 'Switch tabs above or generate monthly bills from the dashboard.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={ReceiptText}
+          title="No invoices found"
+          description={
+            searchQuery
+              ? `No invoices match your search term "${searchQuery}".`
+              : 'No invoices match this status filter.'
+          }
+        />
       ) : (
         <div className="space-y-4">
-          {/* ========================================================================= */}
-          {/* 1. Mobile App Card View (< lg screens)                                    */}
-          {/* ========================================================================= */}
-          <div className="lg:hidden space-y-3">
-            {filteredInvoices.map((inv) => (
-              <div
-                key={inv.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-3 hover:border-slate-300 transition"
-              >
-                {/* Header Row */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <span className="font-bold text-slate-900 text-sm block truncate">
-                      {inv.lease.tenant.name}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500 block truncate mt-0.5">
-                      Unit {inv.lease.unit.unitNumber} • {inv.lease.unit.property.name}
-                    </span>
-                  </div>
-                  <div className="shrink-0">{getStatusBadge(inv.status)}</div>
-                </div>
+          {/* Desktop Table View */}
+          <div className="hidden lg:block">
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                      <th className="py-3 px-4">Billing Month</th>
+                      <th className="py-3 px-4">Tenant & Unit</th>
+                      <th className="py-3 px-4">Due Date</th>
+                      <th className="py-3 px-4">Amount Due</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredInvoices.map((inv) => {
+                      const isFullyPaid = inv.financialSummary?.isFullyPaid || inv.status === 'PAID';
 
-                {/* 3-Pill Breakdown */}
-                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-center">
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Period</span>
-                    <span className="text-xs font-semibold text-slate-800 truncate block">
-                      {new Date(inv.billingMonth).toLocaleDateString('en-US', {
-                        month: 'short',
-                        year: 'numeric',
-                        timeZone: 'UTC',
-                      })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Due Date</span>
-                    <span className="text-xs font-semibold text-slate-800 block">
-                      {new Date(inv.dueDate).toLocaleDateString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Balance</span>
-                    <span
-                      className={`text-xs font-black block ${
-                        inv.financialSummary.remainingBalance > 0
-                          ? 'text-rose-600'
-                          : 'text-emerald-700'
-                      }`}
-                    >
-                      ₹{inv.financialSummary.remainingBalance.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3.5 px-4 font-semibold text-slate-900">
+                            {inv.billingMonth}
+                          </td>
 
-                {/* Mobile Action Buttons */}
-                <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100">
-                  <div className="flex items-center gap-1.5">
-                    {/* WhatsApp Action (Reminder if unpaid, Receipt if paid) */}
-                    {inv.financialSummary.isFullyPaid ? (
-                      <button
-                        onClick={() =>
-                          setWhatsAppModalData({
-                            invoiceId: inv.id,
-                            tenantName: inv.lease.tenant.name,
-                            tenantPhone: inv.lease.tenant.phone,
-                            unitNumber: inv.lease.unit.unitNumber,
-                            propertyName: inv.lease.unit.property.name,
-                            amount: inv.totalAmount,
-                            paidAmount: inv.financialSummary.paidAmount,
-                            dueDate: inv.dueDate,
-                            billingMonth: inv.billingMonth,
-                            isPaid: true,
-                          })
-                        }
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/80 hover:bg-emerald-100 transition active:scale-95"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>WA Receipt</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          setWhatsAppModalData({
-                            invoiceId: inv.id,
-                            tenantName: inv.lease.tenant.name,
-                            tenantPhone: inv.lease.tenant.phone,
-                            unitNumber: inv.lease.unit.unitNumber,
-                            propertyName: inv.lease.unit.property.name,
-                            amount: inv.financialSummary.remainingBalance,
-                            dueDate: inv.dueDate,
-                            billingMonth: inv.billingMonth,
-                            isPaid: false,
-                          })
-                        }
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/80 hover:bg-emerald-100 transition active:scale-95"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>WhatsApp</span>
-                      </button>
-                    )}
+                          <td className="py-3.5 px-4">
+                            <div>
+                              <span className="font-semibold text-slate-900 block">
+                                {inv.lease?.tenant?.name || 'Unknown Tenant'}
+                              </span>
+                              <span className="text-[11px] text-slate-500 block">
+                                Unit {inv.lease?.unit?.unitNumber} ({inv.lease?.unit?.property?.name})
+                              </span>
+                            </div>
+                          </td>
 
-                    {/* View Bill Receipt */}
-                    <a
-                      href={`/pay/${inv.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95"
-                      title="View Bill"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Bill</span>
-                    </a>
+                          <td className="py-3.5 px-4 text-slate-600">
+                            {new Date(inv.dueDate).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </td>
 
-                    {/* Copy Link */}
-                    <button
-                      onClick={() => handleCopyLink(inv.id)}
-                      className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition active:scale-95"
-                      title="Copy Link"
-                    >
-                      {copiedId === inv.id ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-slate-500" />
-                      )}
-                    </button>
-                  </div>
+                          <td className="py-3.5 px-4">
+                            <span className="font-bold text-slate-900 block font-mono tabular-nums">
+                              ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                            </span>
+                            {!isFullyPaid && inv.financialSummary?.remainingBalance > 0 && (
+                              <span className="text-[11px] text-amber-700 block font-mono tabular-nums">
+                                Bal: ₹{Number(inv.financialSummary.remainingBalance).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                          </td>
 
-                  {!inv.financialSummary.isFullyPaid && (
-                    <button
-                      onClick={() => openPaymentModal(inv)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition active:scale-95"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>Record Pay</span>
-                    </button>
-                  )}
-                </div>
+                          <td className="py-3.5 px-4">
+                            {getStatusBadge(inv.status)}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Copy Public Link */}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyLink(inv.id)}
+                                title="Copy Payment Link"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                              >
+                                {copiedId === inv.id ? (
+                                  <Check className="w-4 h-4 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+
+                              {/* View / Pay link */}
+                              <a
+                                href={`/pay/${inv.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Open Public Payment Page"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+
+                              {/* Send WhatsApp */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setWhatsAppModalData({
+                                    invoiceId: inv.id,
+                                    tenantName: inv.lease?.tenant?.name || 'Tenant',
+                                    tenantPhone: inv.lease?.tenant?.phone || '',
+                                    unitNumber: inv.lease?.unit?.unitNumber || '',
+                                    propertyName: inv.lease?.unit?.property?.name || '',
+                                    amount: inv.totalAmount,
+                                    dueDate: inv.dueDate,
+                                    isPaid: isFullyPaid,
+                                    paidAmount: inv.financialSummary?.paidAmount,
+                                    billingMonth: inv.billingMonth,
+                                  })
+                                }
+                                title="Send WhatsApp Notice / Receipt"
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+
+                              {/* Record Payment Button */}
+                              {!isFullyPaid && (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => openPaymentModal(inv)}
+                                >
+                                  Record Pay
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            </Card>
           </div>
 
-          {/* ========================================================================= */}
-          {/* 2. Desktop Table View (>= lg screens)                                    */}
-          {/* ========================================================================= */}
-          <div className="hidden lg:block bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3.5 px-4">Tenant / Property</th>
-                    <th className="py-3.5 px-4">Billing Month</th>
-                    <th className="py-3.5 px-4">Due Date</th>
-                    <th className="py-3.5 px-4">Total Amount</th>
-                    <th className="py-3.5 px-4">Paid / Balance</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-4 px-4">
-                        <span className="font-bold text-slate-900 block text-xs">
-                          {inv.lease.tenant.name}
-                        </span>
-                        <span className="text-[11px] text-slate-500">
-                          {inv.lease.unit.unitNumber} • {inv.lease.unit.property.name}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 font-medium text-slate-700">
-                        {new Date(inv.billingMonth).toLocaleDateString('en-US', {
-                          month: 'short',
-                          year: 'numeric',
-                          timeZone: 'UTC',
-                        })}
-                      </td>
-                      <td className="py-4 px-4 text-slate-600">
-                        {new Date(inv.dueDate).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td className="py-4 px-4 font-bold text-slate-900">
-                        ₹{inv.financialSummary.totalAmount.toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-emerald-700 font-semibold block">
-                          ₹{inv.financialSummary.paidAmount.toLocaleString('en-IN')} paid
-                        </span>
-                        {inv.financialSummary.remainingBalance > 0 && (
-                          <span className="text-rose-600 font-medium text-[11px]">
-                            ₹{inv.financialSummary.remainingBalance.toLocaleString('en-IN')} due
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">{getStatusBadge(inv.status)}</td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* WhatsApp Action (Receipt if paid, Reminder if unpaid) */}
-                          {inv.financialSummary.isFullyPaid ? (
-                            <button
-                              onClick={() =>
-                                setWhatsAppModalData({
-                                  invoiceId: inv.id,
-                                  tenantName: inv.lease.tenant.name,
-                                  tenantPhone: inv.lease.tenant.phone,
-                                  unitNumber: inv.lease.unit.unitNumber,
-                                  propertyName: inv.lease.unit.property.name,
-                                  amount: inv.totalAmount,
-                                  paidAmount: inv.financialSummary.paidAmount,
-                                  dueDate: inv.dueDate,
-                                  billingMonth: inv.billingMonth,
-                                  isPaid: true,
-                                })
-                              }
-                              title="Send Official Rent Receipt via WhatsApp"
-                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
-                            >
-                              <MessageCircle className="w-4 h-4 text-emerald-600" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                setWhatsAppModalData({
-                                  invoiceId: inv.id,
-                                  tenantName: inv.lease.tenant.name,
-                                  tenantPhone: inv.lease.tenant.phone,
-                                  unitNumber: inv.lease.unit.unitNumber,
-                                  propertyName: inv.lease.unit.property.name,
-                                  amount: inv.financialSummary.remainingBalance,
-                                  dueDate: inv.dueDate,
-                                  billingMonth: inv.billingMonth,
-                                  isPaid: false,
-                                })
-                              }
-                              title="Send WhatsApp Reminder (Pre-Set Templates)"
-                              className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                          )}
+          {/* Mobile Card View */}
+          <div className="lg:hidden space-y-3">
+            {filteredInvoices.map((inv) => {
+              const isFullyPaid = inv.financialSummary?.isFullyPaid || inv.status === 'PAID';
 
-                          {/* Copy Shareable Pay Link */}
-                          <button
-                            onClick={() => handleCopyLink(inv.id)}
-                            title="Copy Public Pay Link"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                          >
-                            {copiedId === inv.id ? (
-                              <Check className="w-4 h-4 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
+              return (
+                <Card key={inv.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-semibold text-slate-900 block">
+                          {inv.lease?.tenant?.name || 'Tenant'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block">
+                          Unit {inv.lease?.unit?.unitNumber} • {inv.billingMonth}
+                        </span>
+                      </div>
+                      {getStatusBadge(inv.status)}
+                    </div>
 
-                          {/* View / Print Receipt */}
-                          <a
-                            href={`/pay/${inv.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="View & Print Official Receipt"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Due Date</span>
+                        <span className="text-slate-700 font-medium">
+                          {new Date(inv.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total</span>
+                        <span className="font-bold text-slate-900 font-mono tabular-nums">
+                          ₹{Number(inv.totalAmount).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                    </div>
 
-                          {/* Record Payment */}
-                          {!inv.financialSummary.isFullyPaid && (
-                            <button
-                              onClick={() => openPaymentModal(inv)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition ml-1"
-                            >
-                              <CreditCard className="w-3.5 h-3.5" />
-                              <span>Record Pay</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyLink(inv.id)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-1 font-medium"
+                        >
+                          {copiedId === inv.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedId === inv.id ? 'Copied' : 'Link'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setWhatsAppModalData({
+                              invoiceId: inv.id,
+                              tenantName: inv.lease?.tenant?.name || 'Tenant',
+                              tenantPhone: inv.lease?.tenant?.phone || '',
+                              unitNumber: inv.lease?.unit?.unitNumber || '',
+                              propertyName: inv.lease?.unit?.property?.name || '',
+                              amount: inv.totalAmount,
+                              dueDate: inv.dueDate,
+                              isPaid: isFullyPaid,
+                              paidAmount: inv.financialSummary?.paidAmount,
+                              billingMonth: inv.billingMonth,
+                            })
+                          }
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-medium flex items-center gap-1"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>WhatsApp</span>
+                        </button>
+                      </div>
+
+                      {!isFullyPaid && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => openPaymentModal(inv)}
+                        >
+                          Record Pay
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Record Payment Modal */}
-      {payingInvoice && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95">
-            <h3 className="font-bold text-slate-900 text-base mb-1">Record Tenant Payment</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              Recording payment for {payingInvoice.lease.tenant.name} ({payingInvoice.lease.unit.unitNumber}). Outstanding: ₹
-              {payingInvoice.financialSummary.remainingBalance.toLocaleString('en-IN')}
-            </p>
-
+      {/* Modal 1: Record Manual Payment */}
+      <Modal
+        isOpen={!!payingInvoice}
+        onClose={() => setPayingInvoice(null)}
+        title="Record Payment"
+        description={
+          payingInvoice
+            ? `Record offline UPI, bank transfer, or cash received for ${payingInvoice.lease?.tenant?.name}.`
+            : ''
+        }
+      >
+        {payingInvoice && (
+          <form onSubmit={handleRecordPayment} className="space-y-4">
             {payError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs flex items-center gap-2 border border-rose-200">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{payError}</span>
               </div>
             )}
 
-            <form onSubmit={handleRecordPayment} className="space-y-4">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Payment Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  max={payingInvoice.financialSummary.remainingBalance}
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-bold"
-                />
+                <span className="text-[10px] text-slate-400 font-semibold block uppercase">Remaining Due</span>
+                <span className="font-bold text-slate-900 text-base font-mono tabular-nums">
+                  ₹{Number(payingInvoice.financialSummary.remainingBalance).toLocaleString('en-IN')}
+                </span>
               </div>
+              <Badge variant="warning" size="sm" dot>
+                {payingInvoice.status}
+              </Badge>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Payment Method
-                </label>
-                <select
-                  value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none bg-white font-medium"
-                >
-                  <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
-                  <option value="BANK_TRANSFER">Bank Transfer (NEFT / IMPS / RTGS)</option>
-                  <option value="CASH">Cash</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Amount Received (₹) *
+              </label>
+              <input
+                type="number"
+                required
+                min={1}
+                max={payingInvoice.financialSummary.remainingBalance}
+                value={payAmount}
+                onChange={(e) => setPayAmount(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition font-mono"
+              />
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Reference / Transaction ID (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={payRef}
-                  onChange={(e) => setPayRef(e.target.value)}
-                  placeholder="e.g. UPI/20260905/123456"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none font-mono"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Payment Channel *
+              </label>
+              <select
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
+              >
+                <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                <option value="BANK_TRANSFER">Direct IMPS / NEFT Transfer</option>
+                <option value="CASH">Cash in Hand</option>
+                <option value="CHEQUE">Bank Cheque</option>
+              </select>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  rows={2}
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="e.g. Partial payment for September rent"
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                UPI / Bank Reference Number (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. UPI Ref / UTR 4281987321"
+                value={payRef}
+                onChange={(e) => setPayRef(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition font-mono"
+              />
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPayingInvoice(null)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingPay || payAmount <= 0}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm disabled:opacity-50"
-                >
-                  {submittingPay ? 'Recording...' : 'Save Payment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Internal Remarks (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Paid in full for September rent"
+                value={payNotes}
+                onChange={(e) => setPayNotes(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+              />
+            </div>
 
-      {/* Pre-Set WhatsApp Reminder Templates Modal */}
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => setPayingInvoice(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={submittingPay}
+              >
+                Confirm Payment & Send Receipt
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* WhatsApp Modal */}
       <WhatsAppModal
         isOpen={!!whatsAppModalData}
         onClose={() => setWhatsAppModalData(null)}

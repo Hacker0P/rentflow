@@ -22,6 +22,9 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface PublicInvoice {
   id: string;
@@ -104,19 +107,12 @@ export default function TenantInvoicePaymentPage() {
     }
   }, [invoiceId]);
 
-  const indianGreeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 4 && hour < 12) return { hindi: 'Shubh Prabhat', english: 'Good Morning' };
-    if (hour >= 12 && hour < 17) return { hindi: 'Shubh Dopahar', english: 'Good Afternoon' };
-    return { hindi: 'Shubh Sandhya', english: 'Good Evening' };
-  }, []);
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
-          <p className="text-sm font-medium text-slate-500">Loading invoice details...</p>
+        <div className="flex flex-col items-center gap-2.5">
+          <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+          <p className="text-xs text-slate-500 font-medium">Loading invoice...</p>
         </div>
       </div>
     );
@@ -125,506 +121,262 @@ export default function TenantInvoicePaymentPage() {
   if (error || !invoice) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-slate-200 text-center shadow-lg">
-          <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
+        <div className="w-full max-w-md bg-white rounded-2xl p-8 border border-slate-200 text-center shadow-lg">
+          <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-3">
             <AlertTriangle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Invoice Not Found</h2>
-          <p className="text-sm text-slate-500 mb-6">{error || 'Please check the link provided by your landlord.'}</p>
+          <h2 className="text-base font-bold text-slate-900 mb-1">Invoice Not Found</h2>
+          <p className="text-xs text-slate-500 mb-6">{error || 'Please check the link provided by your landlord.'}</p>
         </div>
       </div>
     );
   }
 
-  const billingDate = new Date(invoice.billingMonth);
-  const formattedMonth = billingDate.toLocaleDateString('en-IN', {
-    month: 'long',
-    year: 'numeric',
-  });
+  const isPaid = invoice.isFullyPaid || invoice.status === 'PAID';
+  const amountToPay = isPaid ? invoice.totalAmount : invoice.remainingBalance;
 
-  const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-
-  // Construct UPI Intent URI
-  const upiIntent = invoice.landlord.upiId
-    ? `upi://pay?pa=${encodeURIComponent(invoice.landlord.upiId)}&pn=${encodeURIComponent(
-        invoice.landlord.name
-      )}&am=${invoice.remainingBalance}&cu=INR&tn=${encodeURIComponent(
-        `Rent Unit ${invoice.unit.unitNumber} ${formattedMonth}`
-      )}`
-    : '';
-
-  const qrCodeUrl =
-    invoice.landlord.qrImageUrl ||
-    (upiIntent ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiIntent)}` : '');
+  // Build standard Indian UPI URL
+  const upiUrl = invoice.landlord?.upiId
+    ? `upi://pay?pa=${encodeURIComponent(invoice.landlord.upiId)}&pn=${encodeURIComponent(invoice.landlord.name || 'Landlord')}&am=${amountToPay}&cu=INR&tn=${encodeURIComponent(`Rent Unit ${invoice.unit.unitNumber} ${invoice.billingMonth}`)}`
+    : null;
 
   const handleCopyUpi = () => {
-    navigator.clipboard.writeText(invoice.landlord.upiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2500);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const getStatusBadge = () => {
-    switch (invoice.status) {
-      case 'PAID':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" /> PAID IN FULL
-          </span>
-        );
-      case 'PARTIALLY_PAID':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-            <Clock className="w-3.5 h-3.5" /> PARTIALLY PAID
-          </span>
-        );
-      case 'OVERDUE':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
-            <AlertTriangle className="w-3.5 h-3.5" /> PAYMENT OVERDUE
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-            <Clock className="w-3.5 h-3.5" /> PAYMENT PENDING
-          </span>
-        );
+    if (invoice.landlord?.upiId) {
+      navigator.clipboard.writeText(invoice.landlord.upiId);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2000);
     }
   };
 
+  const handleSendUtrWhatsApp = () => {
+    if (!invoice.landlord?.phone) return;
+    const cleanPhone = invoice.landlord.phone.replace(/[^0-9]/g, '');
+    const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const msg = `Namaste ${invoice.landlord.name} Ji,\n\nI have completed the rent payment of ₹${amountToPay.toLocaleString('en-IN')} for Unit ${invoice.unit.unitNumber} (${invoice.property.name}).\n\nUTR / Ref: ${reportedUtr}\n\nPlease verify and acknowledge the receipt.\n\nThank you,\n${invoice.tenant.name}`;
+    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100/80 py-6 px-4 sm:px-6 lg:px-8 print:bg-white print:p-0">
-      <div className="max-w-3xl mx-auto space-y-6">
-        {/* Print / Top Navigation Bar (Hidden in Print) */}
-        <div className="flex items-center justify-between print:hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 py-8 px-4">
+      <div className="max-w-xl mx-auto space-y-5">
+        {/* Brand Bar */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-950/20">
-              <Building2 className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+              <Building2 className="w-4 h-4" />
             </div>
-            <div>
-              <span className="text-base font-black text-slate-900 tracking-tight block leading-none">
-                RentFlow India
-              </span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mt-0.5">
-                Official Rent Receipt
-              </span>
-            </div>
+            <span className="font-bold text-slate-900 text-sm tracking-tight">RentFlow</span>
           </div>
 
-          <div className="flex items-center gap-2 print:hidden">
-            <a
-              href={`https://wa.me/?text=${encodeURIComponent(
-                invoice.remainingBalance > 0
-                  ? `Namaste! Here is the rent bill for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) of ₹${invoice.remainingBalance.toLocaleString('en-IN')} due on ${dueDateFormatted}.\n\nPay online via UPI / QR here:\n${typeof window !== 'undefined' ? window.location.href : ''}`
-                  : `✅ Verified Rent Receipt\n\nNamaste! Rent payment of ₹${Number(invoice.paidAmount || invoice.totalAmount).toLocaleString('en-IN')} for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) has been settled in full.\n\nView official receipt:\n${typeof window !== 'undefined' ? window.location.href : ''}`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-emerald-800 text-xs font-bold rounded-2xl shadow-xs transition active:scale-95"
-              title="Share on WhatsApp"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Share WhatsApp</span>
-            </a>
-
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-2xl shadow-xs transition active:scale-95"
-            >
-              <Printer className="w-4 h-4 text-slate-500" />
-              <span>Print Receipt</span>
-            </button>
-          </div>
+          <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            Direct UPI • 0% Fee
+          </span>
         </div>
 
-        {/* Main Invoice Card */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden print:shadow-none print:border-none">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-emerald-950 text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800">
+        {/* Invoice Main Card */}
+        <Card className={isPaid ? 'border-emerald-200/80' : ''}>
+          <CardHeader>
             <div>
-              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                <span className="text-[10px] uppercase tracking-wider text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
-                  🇮🇳 {indianGreeting.hindi}
-                </span>
-                <span className="text-xs uppercase tracking-widest text-emerald-400 font-bold">
-                  Rent & Maintenance Bill
-                </span>
+              <div className="flex items-center gap-2">
+                <CardTitle>Rent Invoice • {invoice.billingMonth}</CardTitle>
+                <Badge
+                  variant={isPaid ? 'success' : invoice.status === 'OVERDUE' ? 'error' : 'warning'}
+                  size="sm"
+                  dot
+                >
+                  {isPaid ? 'Settled' : invoice.status}
+                </Badge>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{invoice.property.name}</h1>
-              <p className="text-slate-400 text-xs mt-1">{invoice.property.address}</p>
+              <CardDescription>
+                Unit {invoice.unit.unitNumber}, {invoice.property.name}
+              </CardDescription>
             </div>
 
-            <div className="text-left sm:text-right">
-              <div className="mb-2">{getStatusBadge()}</div>
-              <span className="text-xs text-slate-300 block font-mono">Invoice #{invoice.id.slice(0, 8)}</span>
-              <span className="text-xs text-slate-400 block">Period: {formattedMonth}</span>
-            </div>
-          </div>
-
-          {/* Parties & Dates */}
-          <div className="p-6 sm:p-8 grid grid-cols-1 sm:grid-cols-2 gap-6 border-b border-slate-100 bg-slate-50/50">
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Resident Tenant
+            <div className="text-right">
+              <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums block">
+                ₹{Number(amountToPay).toLocaleString('en-IN')}
               </span>
-              <h3 className="font-bold text-slate-900 text-base">
-                Namaste, {invoice.tenant.name} Ji 🙏
-              </h3>
-              <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                Unit {invoice.unit.unitNumber} {invoice.unit.floor ? `(Floor ${invoice.unit.floor})` : ''}
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">Phone: {invoice.tenant.phone}</p>
-            </div>
-
-            <div className="sm:text-right">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Landlord / Owner Details
+              <span className="text-[10px] text-slate-400 font-semibold uppercase">
+                {isPaid ? 'Amount Settled' : 'Total Payable'}
               </span>
-              <h3 className="font-bold text-slate-900 text-base">{invoice.landlord.name}</h3>
-              <p className="text-xs text-slate-500 mt-0.5">{invoice.landlord.email}</p>
-              {invoice.landlord.panNumber && (
-                <p className="text-[11px] font-mono font-bold text-slate-700 mt-1">
-                  Landlord PAN: <span className="bg-white px-2 py-0.5 rounded-lg border border-slate-200">{invoice.landlord.panNumber}</span>
-                </p>
-              )}
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
-                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Due Date: <strong>{dueDateFormatted}</strong></span>
-              </div>
             </div>
-          </div>
+          </CardHeader>
 
-          {/* Line Items Table */}
-          <div className="p-6 sm:p-8">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Itemized Rent & Maintenance</h4>
-            <div className="rounded-2xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-4">Item Description</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4 text-right">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {invoice.items.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50">
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">{item.description}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                          {item.type}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-slate-900">
-                        ₹{item.amount.toLocaleString('en-IN')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Financial Summary Calculation */}
-            <div className="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 rounded-2xl p-5 border border-slate-200/80 gap-4">
-              <div className="space-y-1 text-xs text-slate-600">
-                <div>Total Billed: <strong className="text-slate-800">₹{invoice.totalAmount.toLocaleString('en-IN')}</strong></div>
-                <div>Amount Paid: <strong className="text-emerald-700 font-bold">₹{invoice.paidAmount.toLocaleString('en-IN')}</strong></div>
-              </div>
-
-              <div className="text-left sm:text-right">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                  Remaining Rent Balance
-                </span>
-                <span className={`text-3xl font-black block tracking-tight ${invoice.remainingBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  ₹{invoice.remainingBalance.toLocaleString('en-IN')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Interactive UPI / Bank Transfer Payment Section */}
-          {invoice.remainingBalance > 0 ? (
-            <div className="p-6 sm:p-8 bg-gradient-to-b from-emerald-50/60 to-white border-t border-slate-200 print:hidden space-y-5">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-sm">
-                    <QrCode className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base">Pay Rent via UPI / QR / Bank</h3>
-                    <p className="text-xs text-slate-500">Scan with Google Pay, PhonePe, Paytm, BHIM, or use Net Banking</p>
-                  </div>
+          <CardContent className="space-y-4">
+            {/* Breakdown List */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 divide-y divide-slate-200/60 text-xs">
+              {invoice.items.map((item) => (
+                <div key={item.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between">
+                  <span className="text-slate-600">{item.description}</span>
+                  <span className="font-semibold text-slate-900 font-mono tabular-nums">
+                    ₹{Number(item.amount).toLocaleString('en-IN')}
+                  </span>
                 </div>
+              ))}
+            </div>
 
-                {/* Tab Switcher */}
-                <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl text-xs font-bold">
+            {/* Landlord Info */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Payee (Landlord)</span>
+                <span className="font-semibold text-slate-900">{invoice.landlord?.name}</span>
+                {invoice.landlord?.panNumber && (
+                  <span className="text-[11px] text-slate-500 font-mono block">
+                    PAN: {invoice.landlord.panNumber}
+                  </span>
+                )}
+              </div>
+              {invoice.landlord?.phone && (
+                <a
+                  href={`tel:${invoice.landlord.phone}`}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 transition"
+                >
+                  Call Landlord
+                </a>
+              )}
+            </div>
+
+            {/* Payment Section (when not paid) */}
+            {!isPaid ? (
+              <div className="space-y-4 pt-2">
+                {/* Payment Tabs: UPI vs Bank */}
+                <div className="flex p-1 rounded-xl bg-slate-100 gap-1 text-xs">
                   <button
                     onClick={() => setActiveTab('UPI')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      activeTab === 'UPI' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${
+                      activeTab === 'UPI' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
                     }`}
                   >
                     UPI Apps & QR
                   </button>
                   <button
                     onClick={() => setActiveTab('BANK')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
-                      activeTab === 'BANK' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                    className={`flex-1 py-1.5 rounded-lg font-medium transition-colors ${
+                      activeTab === 'BANK' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
                     }`}
                   >
-                    Bank IMPS / NEFT
+                    Bank Transfer (IMPS)
                   </button>
                 </div>
-              </div>
 
-              {activeTab === 'UPI' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                  {/* QR Code Container */}
-                  <div className="flex flex-col items-center justify-center p-5 bg-white rounded-3xl border border-emerald-200/80 shadow-xs">
-                    <div className="max-w-[210px] w-full aspect-square flex items-center justify-center p-2 border border-slate-100 rounded-2xl shadow-2xs mb-2">
-                      <img
-                        src={
-                          qrError && upiIntent
-                            ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiIntent)}`
-                            : qrCodeUrl
-                        }
-                        alt="UPI Payment QR Code"
-                        width={200}
-                        height={200}
-                        className="rounded-xl object-contain max-h-[200px]"
-                        onError={() => setQrError(true)}
-                      />
+                {activeTab === 'UPI' ? (
+                  <div className="space-y-4 text-center">
+                    {/* QR Code Container */}
+                    <div className="w-48 h-48 mx-auto rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden p-2">
+                      {invoice.landlord?.qrImageUrl && !qrError ? (
+                        <img
+                          src={invoice.landlord.qrImageUrl}
+                          alt="Landlord UPI QR"
+                          className="w-full h-full object-contain"
+                          onError={() => setQrError(true)}
+                        />
+                      ) : (
+                        <div className="space-y-1">
+                          <QrCode className="w-12 h-12 text-slate-400 mx-auto" />
+                          <span className="text-[11px] text-slate-500 font-medium block">
+                            Scan with GPay or PhonePe
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    {!qrError && invoice.landlord.qrImageUrl && (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Verified QR
-                      </span>
-                    )}
-                    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Instant 1-Tap UPI Transfer</span>
-                    </div>
-                  </div>
 
-                  {/* Direct Actions & UPI App Links */}
-                  <div className="space-y-4">
-                    {invoice.landlord.upiId && (
-                      <div className="p-3.5 rounded-2xl bg-white border border-slate-200">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                          Landlord UPI ID
-                        </span>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-sm font-bold text-slate-800 break-all">
+                    {/* Copy UPI Box */}
+                    {invoice.landlord?.upiId && (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                        <div className="text-left min-w-0 flex-1">
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">UPI ID</span>
+                          <span className="font-mono font-semibold text-slate-900 truncate block">
                             {invoice.landlord.upiId}
                           </span>
-                          <button
-                            onClick={handleCopyUpi}
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold shrink-0 transition flex items-center gap-1"
-                          >
-                            {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                            <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-                          </button>
                         </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyUpi}
+                          className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-medium flex items-center gap-1 shadow-xs hover:bg-slate-50 transition"
+                        >
+                          {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                        </button>
                       </div>
                     )}
 
-                    {/* Quick Mobile App Buttons */}
-                    {upiIntent && (
-                      <div className="space-y-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          Tap to Pay on Mobile
-                        </span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <a
-                            href={upiIntent}
-                            className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold text-center border border-slate-200 transition"
-                          >
-                            Google Pay
-                          </a>
-                          <a
-                            href={upiIntent}
-                            className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold text-center border border-slate-200 transition"
-                          >
-                            PhonePe
-                          </a>
-                          <a
-                            href={upiIntent}
-                            className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold text-center border border-slate-200 transition"
-                          >
-                            Paytm
-                          </a>
-                          <a
-                            href={upiIntent}
-                            className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold text-center transition shadow-xs"
-                          >
-                            Any UPI App
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notify Landlord on WhatsApp */}
-                    {invoice.landlord.phone && (
-                      <a
-                        href={`https://wa.me/${invoice.landlord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                          `Namaste ${invoice.landlord.name} Ji, I have paid ₹${invoice.remainingBalance} for Unit ${invoice.unit.unitNumber} rent (${formattedMonth}). Invoice #${invoice.id.slice(0, 8)}.`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-3 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 transition flex items-center justify-center gap-2"
-                      >
-                        <MessageCircle className="w-4 h-4 text-emerald-600" />
-                        <span>Notify Landlord on WhatsApp</span>
+                    {/* 1-Tap Mobile UPI Launcher */}
+                    {upiUrl && (
+                      <a href={upiUrl} className="block">
+                        <Button variant="primary" size="lg" className="w-full">
+                          Pay ₹{amountToPay.toLocaleString('en-IN')} on Mobile UPI
+                        </Button>
                       </a>
                     )}
                   </div>
-                </div>
-              ) : (
-                /* Bank Transfer Details */
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Account Beneficiary</span>
-                      <span className="font-bold text-slate-800">{invoice.landlord.name}</span>
+                ) : (
+                  <div className="space-y-2 text-xs">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Bank Name</span>
+                        <span className="font-semibold text-slate-900">{invoice.landlord?.bankName || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Account Number</span>
+                        <span className="font-mono font-bold text-slate-900">{invoice.landlord?.bankAccountNumber || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">IFSC Code</span>
+                        <span className="font-mono font-bold text-slate-900 uppercase">{invoice.landlord?.bankIfsc || '—'}</span>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Bank Name</span>
-                      <span className="font-bold text-slate-800">{invoice.landlord.bankName || 'HDFC Bank'}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Account Number</span>
-                      <span className="font-bold font-mono text-slate-800">
-                        {invoice.landlord.bankAccountNumber || '50100482910482'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(invoice.landlord.bankAccountNumber || '50100482910482');
-                        setCopiedBankAcc(true);
-                        setTimeout(() => setCopiedBankAcc(false), 2000);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700"
+                {/* Submit UTR Section */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                  <span className="text-xs font-semibold text-slate-900 block">
+                    Already transferred rent? Send UTR to Landlord:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter 12-digit UPI Ref / UTR"
+                      value={reportedUtr}
+                      onChange={(e) => setReportedUtr(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={!reportedUtr.trim()}
+                      onClick={handleSendUtrWhatsApp}
+                      leftIcon={<Send className="w-3.5 h-3.5 text-emerald-600" />}
                     >
-                      {copiedBankAcc ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">IFSC Code</span>
-                      <span className="font-bold font-mono text-slate-800">{invoice.landlord.bankIfsc || 'HDFC0001234'}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(invoice.landlord.bankIfsc || 'HDFC0001234');
-                        setCopiedBankIfsc(true);
-                        setTimeout(() => setCopiedBankIfsc(false), 2000);
-                      }}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700"
-                    >
-                      {copiedBankIfsc ? 'Copied' : 'Copy'}
-                    </button>
+                      WhatsApp Landlord
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="p-6 sm:p-8 bg-emerald-50/50 border-t border-emerald-100 text-center print:border-none space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-7 h-7" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-emerald-900">Thank You! Payment Received</h3>
-                <p className="text-xs text-emerald-700 mt-1">
-                  This invoice has been settled in full. Keep this document as your verified rent receipt.
-                </p>
-              </div>
+            ) : (
+              /* Settled Official Receipt View */
+              <div className="space-y-4 pt-2">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-between text-xs text-emerald-900">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>This rent invoice has been settled and verified.</span>
+                  </div>
+                </div>
 
-              {/* 1-Tap WhatsApp Share & Print Actions */}
-              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1 print:hidden">
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(
-                    `✅ *Verified Rent Receipt*\n\nNamaste! Rent payment of ₹${Number(invoice.paidAmount || invoice.totalAmount).toLocaleString('en-IN')} for Unit ${invoice.unit.unitNumber} (${invoice.property.name}) towards ${formattedMonth} has been settled in full.\n\nView official receipt:\n${typeof window !== 'undefined' ? window.location.href : ''}`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition active:scale-95"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Share Receipt on WhatsApp</span>
-                </a>
-
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition"
+                  leftIcon={<Printer className="w-4 h-4" />}
                 >
-                  <Printer className="w-4 h-4 text-slate-500" />
-                  <span>Print Receipt</span>
-                </button>
+                  Print / Save Official Receipt
+                </Button>
               </div>
-            </div>
-          )}
-
-          {/* Payment Receipts History */}
-          {invoice.payments.length > 0 && (
-            <div className="p-6 sm:p-8 border-t border-slate-200/80 bg-white">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                Payment History & Receipts
-              </h4>
-              <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-4">Receipt Date</th>
-                      <th className="py-2.5 px-4">Method</th>
-                      <th className="py-2.5 px-4">Reference UTR</th>
-                      <th className="py-2.5 px-4 text-right">Amount Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {invoice.payments.map((p) => (
-                      <tr key={p.id}>
-                        <td className="py-3 px-4 font-medium text-slate-700">
-                          {new Date(p.paymentDate).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="py-3 px-4 font-semibold text-slate-800">{p.paymentMethod}</td>
-                        <td className="py-3 px-4 font-mono text-slate-500 text-[11px]">
-                          {p.transactionReference || 'UTR Verified'}
-                        </td>
-                        <td className="py-3 px-4 text-right font-bold text-emerald-700">
-                          +₹{p.amount.toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Footer Note */}
-          <div className="p-4 bg-slate-50 text-center border-t border-slate-100 text-[11px] text-slate-400">
-            Generated securely by RentFlow Platform • Verified digital rent invoice compliant with Indian IT Act.
-          </div>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

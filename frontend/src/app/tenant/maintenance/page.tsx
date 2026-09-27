@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Wrench,
-  PlusCircle,
+  Plus,
   Clock,
   CheckCircle2,
   AlertTriangle,
@@ -17,13 +17,17 @@ import {
   Phone,
   MessageCircle,
   Building2,
-  Radio,
   Trash2,
   AlertCircle,
   Loader2,
   Check,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface MaintenanceTicket {
   id: string;
@@ -90,21 +94,19 @@ export default function TenantMaintenancePage() {
       await apiRequest('/maintenance', {
         method: 'POST',
         body: JSON.stringify({
-          title,
+          title: title.trim(),
           category,
           priority,
-          description,
+          description: description.trim(),
         }),
       });
 
       setShowModal(false);
       setTitle('');
       setDescription('');
-      setCategory('PLUMBING');
-      setPriority('MEDIUM');
       await fetchTickets();
     } catch (err: any) {
-      setError(err.message || 'Failed to submit maintenance request.');
+      setError(err.message || 'Failed to submit repair request');
     } finally {
       setSubmitting(false);
     }
@@ -121,462 +123,314 @@ export default function TenantMaintenancePage() {
       setTicketToCancel(null);
       await fetchTickets();
     } catch (err: any) {
-      setCancelError(err.message || 'Failed to cancel request');
+      setCancelError(err.message || 'Failed to cancel ticket');
     } finally {
       setCancelling(false);
     }
   };
 
-  const stats = useMemo(() => {
-    const total = tickets.length;
-    const active = tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
-    const resolved = tickets.filter((t) => t.status === 'RESOLVED').length;
-    return { total, active, resolved };
-  }, [tickets]);
-
-  const filteredTickets = useMemo(() => {
-    if (statusFilter === 'ACTIVE') {
-      return tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_PROGRESS');
-    }
-    if (statusFilter === 'RESOLVED') {
-      return tickets.filter((t) => t.status === 'RESOLVED');
-    }
-    return tickets;
-  }, [tickets, statusFilter]);
-
-  const categories = [
-    { id: 'PLUMBING', label: 'Plumbing', icon: Droplet, color: 'text-sky-500' },
-    { id: 'ELECTRICAL', label: 'Electrical', icon: Zap, color: 'text-amber-500' },
-    { id: 'APPLIANCE', label: 'Appliance', icon: Tv, color: 'text-purple-500' },
-    { id: 'CARPENTRY', label: 'Carpentry', icon: Hammer, color: 'text-orange-700' },
-    { id: 'PAINTING', label: 'Painting', icon: Paintbrush, color: 'text-emerald-500' },
-    { id: 'OTHER', label: 'Other', icon: HelpCircle, color: 'text-slate-500' },
-  ];
-
-  const getCategoryDetails = (cat: string) => {
+  const getCategoryIcon = (cat: string) => {
     switch (cat) {
       case 'PLUMBING':
-        return { icon: <Droplet className="w-4 h-4 text-sky-500" />, bg: 'bg-sky-50 text-sky-700 border-sky-200' };
+        return <Droplet className="w-4 h-4 text-sky-600" />;
       case 'ELECTRICAL':
-        return { icon: <Zap className="w-4 h-4 text-amber-500" />, bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+        return <Zap className="w-4 h-4 text-amber-600" />;
       case 'APPLIANCE':
-        return { icon: <Tv className="w-4 h-4 text-purple-500" />, bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+        return <Tv className="w-4 h-4 text-purple-600" />;
       case 'CARPENTRY':
-        return { icon: <Hammer className="w-4 h-4 text-orange-700" />, bg: 'bg-orange-50 text-orange-800 border-orange-200' };
+        return <Hammer className="w-4 h-4 text-amber-700" />;
       case 'PAINTING':
-        return { icon: <Paintbrush className="w-4 h-4 text-emerald-500" />, bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        return <Paintbrush className="w-4 h-4 text-emerald-600" />;
       default:
-        return { icon: <HelpCircle className="w-4 h-4 text-slate-500" />, bg: 'bg-slate-50 text-slate-700 border-slate-200' };
+        return <HelpCircle className="w-4 h-4 text-slate-600" />;
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
+  const getPriorityBadge = (p: string) => {
+    switch (p) {
+      case 'HIGH':
+        return <Badge variant="error" size="sm">High Priority</Badge>;
+      case 'MEDIUM':
+        return <Badge variant="warning" size="sm">Medium</Badge>;
+      default:
+        return <Badge variant="neutral" size="sm">Low</Badge>;
     }
   };
+
+  const getStatusBadge = (s: string) => {
+    switch (s) {
+      case 'RESOLVED':
+        return <Badge variant="success" size="sm" dot>Resolved</Badge>;
+      case 'IN_PROGRESS':
+        return <Badge variant="brand" size="sm" dot>In Progress</Badge>;
+      default:
+        return <Badge variant="warning" size="sm" dot>Under Review</Badge>;
+    }
+  };
+
+  const filteredTickets = tickets.filter((t) => {
+    if (statusFilter === 'ACTIVE') return t.status !== 'RESOLVED';
+    if (statusFilter === 'RESOLVED') return t.status === 'RESOLVED';
+    return true;
+  });
 
   return (
-    <div className="space-y-6">
-      {/* Title & Action */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-            Flat Care & Repairs
-          </span>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Maintenance & Repairs</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Report issues to your landlord and track technician visits in real-time.
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Repairs & Maintenance</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Log maintenance issues, request technician visits, and track repairs.
           </p>
         </div>
-
-        <button
+        <Button
           onClick={() => setShowModal(true)}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950/20 active:scale-95 transition"
+          leftIcon={<Plus className="w-4 h-4" />}
+          variant="primary"
+          size="md"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>Raise Repair Request</span>
-        </button>
+          Report Issue
+        </Button>
       </div>
 
-      {/* KPI Overview and Filter Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-2xl text-xs font-semibold self-start sm:self-auto">
-          {[
-            { id: 'ALL' as const, label: 'All Requests', count: stats.total },
-            { id: 'ACTIVE' as const, label: 'Active / In Progress', count: stats.active },
-            { id: 'RESOLVED' as const, label: 'Resolved', count: stats.resolved },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
-                statusFilter === tab.id
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${statusFilter === tab.id ? 'bg-slate-900 text-white' : 'bg-slate-200/80 text-slate-600'}`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1.5">
+        {[
+          { key: 'ALL', label: 'All Requests' },
+          { key: 'ACTIVE', label: 'In Progress' },
+          { key: 'RESOLVED', label: 'Resolved' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setStatusFilter(tab.key as any)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+              statusFilter === tab.key
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tickets List */}
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        <div className="flex h-56 items-center justify-center">
+          <div className="flex flex-col items-center gap-2.5">
+            <div className="h-8 w-8 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
+            <p className="text-xs text-slate-500 font-medium">Loading repair requests...</p>
+          </div>
         </div>
       ) : filteredTickets.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs">
-          <Wrench className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="font-bold text-slate-700 text-sm">No Maintenance Requests Found</h3>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-            {statusFilter !== 'ALL'
-              ? 'No tickets match the selected status filter.'
-              : 'Everything looks good! If you ever need something fixed in your flat, tap "Raise Repair Request" above.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={Wrench}
+          title="No maintenance requests"
+          description="Everything in your flat is operating normally! If anything breaks or needs repair, click Report Issue to notify your landlord."
+          action={{
+            label: 'Report Issue',
+            onClick: () => setShowModal(true),
+            icon: <Plus className="w-4 h-4" />,
+          }}
+        />
       ) : (
-        <div className="space-y-4">
-          {filteredTickets.map((t) => {
-            const cat = getCategoryDetails(t.category);
-            const isResolved = t.status === 'RESOLVED';
-            const isInProgress = t.status === 'IN_PROGRESS';
-            const isOpen = t.status === 'OPEN';
-            const isUrgent = t.priority === 'URGENT';
-            const landlord = t.unit.property.owner;
-
-            return (
-              <div
-                key={t.id}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 sm:p-6 space-y-4 hover:border-slate-300 transition"
-              >
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100 shrink-0 mt-0.5">
-                      {cat.icon}
+        <div className="space-y-3">
+          {filteredTickets.map((ticket) => (
+            <Card key={ticket.id} className="hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 sm:p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200/80">
+                      {getCategoryIcon(ticket.category)}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-slate-900 text-base leading-snug">{t.title}</h3>
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-xl border ${
-                            isUrgent
-                              ? 'bg-rose-50 text-rose-700 border-rose-200 font-extrabold'
-                              : t.priority === 'MEDIUM'
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-slate-50 text-slate-600 border-slate-200'
-                          }`}
-                        >
-                          {t.priority}
-                        </span>
-                      </div>
-                      <span className="text-xs text-slate-500 mt-0.5 block">
-                        Unit {t.unit.unitNumber} • {t.unit.property.name}
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        {ticket.category}
                       </span>
+                      <h3 className="font-semibold text-sm text-slate-900 leading-snug">
+                        {ticket.title}
+                      </h3>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    {/* Status Pill */}
-                    <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full inline-flex items-center gap-1.5 ${
-                        isResolved
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : isInProgress
-                          ? 'bg-sky-100 text-sky-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {isResolved ? (
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      ) : isInProgress ? (
-                        <Radio className="w-3.5 h-3.5" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5" />
-                      )}
-                      <span>{t.status.replace('_', ' ')}</span>
-                    </span>
-
-                    {/* Withdraw button for Open tickets */}
-                    {isOpen && (
-                      <button
-                        onClick={() => {
-                          setCancelError(null);
-                          setTicketToCancel(t);
-                        }}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95"
-                        title="Cancel this request"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {getStatusBadge(ticket.status)}
+                    {getPriorityBadge(ticket.priority)}
                   </div>
                 </div>
 
-                {/* Description */}
-                <p className="text-xs text-slate-600 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 leading-relaxed break-words">
-                  {t.description}
+                <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200/60 leading-relaxed">
+                  {ticket.description || 'No detailed remarks provided.'}
                 </p>
 
-                {/* Visual Progress Stepper */}
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 px-1">
-                    <span className={isOpen ? 'text-amber-700 font-bold' : isResolved || isInProgress ? 'text-slate-800' : ''}>
-                      1. Reported
-                    </span>
-                    <span className={isInProgress ? 'text-sky-700 font-bold' : isResolved ? 'text-slate-800' : ''}>
-                      2. Under Review / In Progress
-                    </span>
-                    <span className={isResolved ? 'text-emerald-700 font-bold' : ''}>
-                      3. Resolved
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <div className={`h-1.5 rounded-full ${isOpen || isInProgress || isResolved ? 'bg-amber-500' : 'bg-slate-200'}`} />
-                    <div className={`h-1.5 rounded-full ${isInProgress || isResolved ? 'bg-sky-500' : 'bg-slate-200'}`} />
-                    <div className={`h-1.5 rounded-full ${isResolved ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                  </div>
-                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs text-slate-500">
+                  <span>
+                    Reported on {new Date(ticket.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </span>
 
-                {/* Footer with dates and landlord contact */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
-                  <div className="text-[11px] text-slate-400">
-                    <span>Submitted on {formatDate(t.createdAt)}</span>
-                    {t.resolvedAt && (
-                      <span className="text-emerald-600 font-bold ml-2">
-                        • Resolved on {formatDate(t.resolvedAt)}
-                      </span>
-                    )}
-                  </div>
+                  {ticket.status === 'PENDING' && (
+                    <button
+                      type="button"
+                      onClick={() => setTicketToCancel(ticket)}
+                      className="text-xs text-slate-400 hover:text-rose-600 transition-colors"
+                    >
+                      Withdraw Request
+                    </button>
+                  )}
 
-                  {landlord && landlord.phone && (
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`https://wa.me/${landlord.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                          `Hi ${landlord.name || 'Landlord'}, regarding my maintenance request "${t.title}" for Unit ${t.unit.unitNumber}: `
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold transition"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>WhatsApp Landlord</span>
-                      </a>
-                      <a
-                        href={`tel:${landlord.phone}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        <span>Call</span>
-                      </a>
-                    </div>
+                  {ticket.status === 'RESOLVED' && (
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Resolved
+                    </span>
                   )}
                 </div>
-              </div>
-            );
-          })}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* New Ticket Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                  <Wrench className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base leading-tight">Raise Maintenance Request</h3>
-                  <p className="text-xs text-slate-400">Your landlord will be notified instantly</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
+      {/* Modal 1: Report Issue */}
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Report Maintenance Issue"
+        description="Notify your landlord to schedule an inspection or repair technician."
+        maxWidth="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
+          )}
 
-            {error && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Category Visual Grid */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">What needs repair?</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {categories.map((c) => {
-                    const Icon = c.icon;
-                    const isSelected = category === c.id;
-                    return (
-                      <button
-                        type="button"
-                        key={c.id}
-                        onClick={() => setCategory(c.id)}
-                        className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center gap-1 ${
-                          isSelected
-                            ? 'bg-emerald-50 border-emerald-600 text-emerald-800 shadow-2xs font-bold'
-                            : 'bg-white border-slate-200/80 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-700' : c.color}`} />
-                        <span className="text-[11px] truncate w-full">{c.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Title */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Issue Summary</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Bathroom tap leaking water continuously"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none"
-                />
-              </div>
-
-              {/* Priority */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Urgency Level</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'LOW', label: 'Low', desc: 'Can wait a few days' },
-                    { id: 'MEDIUM', label: 'Medium', desc: 'Normal attention' },
-                    { id: 'URGENT', label: 'Urgent', desc: 'Needs fast repair' },
-                  ].map((p) => {
-                    const isSelected = priority === p.id;
-                    return (
-                      <button
-                        type="button"
-                        key={p.id}
-                        onClick={() => setPriority(p.id)}
-                        className={`p-2 rounded-xl border text-left transition ${
-                          isSelected
-                            ? p.id === 'URGENT'
-                              ? 'bg-rose-50 border-rose-600 text-rose-900 font-bold'
-                              : 'bg-emerald-50 border-emerald-600 text-emerald-900 font-bold'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="text-xs font-bold">{p.label}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 truncate">{p.desc}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Details</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Describe when the issue began, exact location in the flat, or special instructions..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:outline-none resize-none"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md transition disabled:opacity-50 inline-flex items-center gap-1.5"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{submitting ? 'Submitting...' : 'Send Request to Landlord'}</span>
-                </button>
-              </div>
-            </form>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Issue Summary *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Kitchen tap leaking, AC not cooling, Geyser switch broken"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition"
+            />
           </div>
-        </div>
-      )}
 
-      {/* Cancel Request Modal */}
-      {ticketToCancel && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 animate-in fade-in zoom-in-95 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Cancel Repair Request</h3>
-                <p className="text-xs text-slate-500">Withdraw this ticket</p>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Category *
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
+              >
+                <option value="PLUMBING">Plumbing & Water</option>
+                <option value="ELECTRICAL">Electrical & Lighting</option>
+                <option value="APPLIANCE">Appliance / AC / Geyser</option>
+                <option value="CARPENTRY">Carpentry & Locks</option>
+                <option value="PAINTING">Painting & Seepage</option>
+                <option value="OTHER">General Repair</option>
+              </select>
             </div>
 
-            {cancelError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{cancelError}</span>
-              </div>
-            )}
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Are you sure you want to cancel <span className="font-bold text-slate-900">&quot;{ticketToCancel.title}&quot;</span>? This will remove the request from your landlord&apos;s queue.
-            </p>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setTicketToCancel(null);
-                  setCancelError(null);
-                }}
-                disabled={cancelling}
-                className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Urgency Level *
+              </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition bg-white"
               >
-                Keep Request
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelTicket}
-                disabled={cancelling}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5"
-              >
-                {cancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>{cancelling ? 'Cancelling...' : 'Yes, Cancel Request'}</span>
-              </button>
+                <option value="HIGH">High (Urgent Attention)</option>
+                <option value="MEDIUM">Medium (Normal)</option>
+                <option value="LOW">Low (Can wait)</option>
+              </select>
             </div>
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Description & Notes
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Provide symptoms, convenient visit timings, or details to help the technician..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition resize-none"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setShowModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              isLoading={submitting}
+            >
+              Submit Request
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 2: Cancel/Withdraw Ticket */}
+      <Modal
+        isOpen={!!ticketToCancel}
+        onClose={() => setTicketToCancel(null)}
+        title="Withdraw Request"
+        description="Are you sure you want to cancel this maintenance request?"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600 leading-relaxed">
+            This will remove <strong className="text-slate-900">&ldquo;{ticketToCancel?.title}&rdquo;</strong> from your landlord&apos;s desk.
+          </p>
+
+          {cancelError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{cancelError}</span>
+            </div>
+          )}
+
+          <div className="pt-2 flex items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setTicketToCancel(null)}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              isLoading={cancelling}
+              onClick={handleCancelTicket}
+            >
+              Withdraw Request
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
