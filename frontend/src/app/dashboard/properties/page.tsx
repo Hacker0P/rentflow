@@ -135,20 +135,22 @@ export default function PropertiesPage() {
             return (
               <div
                 key={prop.id}
-                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col justify-between space-y-4"
+                className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-5 hover:border-slate-300 hover:shadow-md transition flex flex-col justify-between space-y-4 overflow-hidden w-full max-w-full"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-950/20 shrink-0">
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-slate-900 text-base leading-tight truncate">{prop.name}</h4>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-1 truncate">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{prop.address}</span>
-                        </p>
+                <div className="w-full min-w-0">
+                  <div className="flex items-start gap-3 min-w-0 w-full">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-950/20 shrink-0 mt-0.5">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-slate-900 text-base leading-tight break-words">
+                        {prop.name}
+                      </h4>
+                      <div className="text-xs text-slate-500 flex items-start gap-1.5 mt-1 leading-snug">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                        <span className="break-words line-clamp-2 text-slate-600 font-medium">
+                          {prop.address}
+                        </span>
                       </div>
                     </div>
                   </div>
