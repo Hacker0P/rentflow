@@ -58,6 +58,7 @@ interface PublicInvoice {
     email: string;
     phone?: string;
     upiId: string;
+    qrImageUrl?: string;
     panNumber?: string;
     bankName?: string;
     bankAccountNumber?: string;
@@ -130,13 +131,17 @@ export default function TenantInvoicePaymentPage() {
   });
 
   // Construct UPI Intent URI
-  const upiIntent = `upi://pay?pa=${encodeURIComponent(invoice.landlord.upiId)}&pn=${encodeURIComponent(
-    invoice.landlord.name
-  )}&am=${invoice.remainingBalance}&cu=INR&tn=${encodeURIComponent(
-    `Rent Unit ${invoice.unit.unitNumber} ${formattedMonth}`
-  )}`;
+  const upiIntent = invoice.landlord.upiId
+    ? `upi://pay?pa=${encodeURIComponent(invoice.landlord.upiId)}&pn=${encodeURIComponent(
+        invoice.landlord.name
+      )}&am=${invoice.remainingBalance}&cu=INR&tn=${encodeURIComponent(
+        `Rent Unit ${invoice.unit.unitNumber} ${formattedMonth}`
+      )}`
+    : '';
 
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiIntent)}`;
+  const qrCodeUrl =
+    invoice.landlord.qrImageUrl ||
+    (upiIntent ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiIntent)}` : '');
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(invoice.landlord.upiId);
@@ -318,9 +323,14 @@ export default function TenantInvoicePaymentPage() {
                     alt="UPI Payment QR Code"
                     width={200}
                     height={200}
-                    className="rounded-xl border border-slate-100 shadow-inner"
+                    className="rounded-xl border border-slate-100 shadow-inner object-contain max-h-[220px]"
                   />
-                  <div className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                  {invoice.landlord.qrImageUrl && (
+                    <span className="mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Landlord&apos;s Payment QR
+                    </span>
+                  )}
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Instant Verification & Receipt</span>
                   </div>

@@ -33,6 +33,7 @@ export class TenantPortalService {
                         bankName: true,
                         bankAccountNumber: true,
                         bankIfsc: true,
+                        qrImageUrl: true,
                       },
                     },
                   },
@@ -161,6 +162,7 @@ export class TenantPortalService {
         bankName: landlord.bankName,
         bankAccountNumber: landlord.bankAccountNumber,
         bankIfsc: landlord.bankIfsc,
+        qrImageUrl: landlord.qrImageUrl,
       },
       lease: {
         id: activeLease.id,

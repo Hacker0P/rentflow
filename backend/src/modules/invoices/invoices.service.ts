@@ -375,6 +375,7 @@ export class InvoicesService {
                         bankName: true,
                         bankAccountNumber: true,
                         bankIfsc: true,
+                        qrImageUrl: true,
                       },
                     },
                   },
@@ -454,6 +455,7 @@ export class InvoicesService {
         bankName: owner.bankName,
         bankAccountNumber: owner.bankAccountNumber,
         bankIfsc: owner.bankIfsc,
+        qrImageUrl: owner.qrImageUrl,
       },
     };
   }

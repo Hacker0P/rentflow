@@ -35,4 +35,8 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(20)
   bankIfsc?: string;
+
+  @IsOptional()
+  @IsString()
+  qrImageUrl?: string;
 }
