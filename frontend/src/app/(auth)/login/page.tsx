@@ -18,6 +18,7 @@ import {
   Home,
   User,
   Sparkles,
+  ArrowLeft,
 } from 'lucide-react';
 import { apiRequest, setAuthToken, setStoredUser, getStoredUser } from '@/lib/api';
 
@@ -32,7 +33,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<'IDENTIFIER' | 'PASSWORD'>('IDENTIFIER');
   const [rememberMe, setRememberMe] = useState(true);
-  const [role, setRole] = useState<'LANDLORD' | 'TENANT'>('LANDLORD');
 
   const [savedUser, setSavedUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -135,27 +135,50 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col justify-between font-sans selection:bg-[#f04f5f] selection:text-white">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden">
+      {/* Top Header Bar with Home Navigation & Brand */}
+      <header className="w-full max-w-md mx-auto pt-4 px-5 flex items-center justify-between z-20">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 backdrop-blur-md"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Home</span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-950/60 border border-emerald-400/30">
+            <Building2 className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-black tracking-tight text-white">RentFlow</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
+              India
+            </span>
+          </div>
+        </div>
+      </header>
+
       {/* ========================================================================= */}
       {/* 1. Top Visual Hero Banner (Zomato/Blinkit High-Impact Graphic Style)       */}
       {/* ========================================================================= */}
-      <div className="relative w-full max-w-md mx-auto pt-10 pb-6 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
+      <div className="relative w-full max-w-md mx-auto pt-6 pb-6 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
         {/* Ambient Glows */}
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-emerald-500/25 via-teal-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         {/* Big Bold Headline */}
         <div className="space-y-1 relative z-10">
           <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
             Manage &amp; Pay Rent
           </h1>
-          <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
+          <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-emerald-400 leading-tight">
             Instantly on UPI
           </h2>
         </div>
 
         {/* Angled Tent Card Badge ("DIRECT UPI MODE") */}
-        <div className="mt-6 mb-2 relative z-10 flex flex-col items-center">
-          <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/10 border-2 border-emerald-500/30 -rotate-3 hover:rotate-0 transition-transform duration-300 flex items-center gap-2">
+        <div className="mt-5 mb-2 relative z-10 flex flex-col items-center">
+          <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/20 border-2 border-emerald-500/40 -rotate-3 hover:rotate-0 transition-transform duration-300 flex items-center gap-2">
             <div className="w-5 h-5 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-[10px]">
               ₹
             </div>
@@ -172,7 +195,7 @@ export default function LoginPage() {
 
           {/* Visual Carousel Indicator Dots */}
           <div className="flex items-center gap-1.5 mt-4">
-            <span className="w-4 h-1.5 rounded-full bg-white transition-all" />
+            <span className="w-4 h-1.5 rounded-full bg-emerald-400 transition-all shadow-xs shadow-emerald-400/50" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
@@ -185,7 +208,7 @@ export default function LoginPage() {
       {/* 2. White Bottom Sheet Card (The Core Requested Interface)                 */}
       {/* ========================================================================= */}
       <div className="w-full max-w-md mx-auto bg-white rounded-t-[36px] sm:rounded-3xl shadow-2xl p-6 sm:p-8 pt-6 text-slate-900 border-t border-slate-100 flex-1 flex flex-col justify-between">
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* Section A: "Choose your account" (Saved Account Fast Sign-In) */}
           <div className="space-y-2">
             <span className="text-xs font-bold text-slate-500 text-center block tracking-tight">
@@ -195,7 +218,7 @@ export default function LoginPage() {
             {savedUser ? (
               <div
                 onClick={handleSelectSavedAccount}
-                className="w-full p-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-98"
+                className="w-full p-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-emerald-50/40 hover:border-emerald-300 transition flex items-center justify-between cursor-pointer group shadow-2xs active:scale-98"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 font-extrabold flex items-center justify-center text-base border border-emerald-200 group-hover:scale-105 transition">
@@ -211,17 +234,17 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div className="text-slate-400 group-hover:text-slate-600 p-1">
+                <div className="text-slate-400 group-hover:text-emerald-600 p-1">
                   <MoreVertical className="w-4 h-4" />
                 </div>
               </div>
             ) : (
-              <div className="w-full p-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 flex items-center justify-between text-xs text-slate-500">
+              <div className="w-full p-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/50 flex items-center justify-between text-xs text-slate-600">
                 <span className="flex items-center gap-2 font-medium">
                   <Building2 className="w-4 h-4 text-emerald-600" />
                   Instant Access for Landlords &amp; Tenants
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
                   Fast Sign In
                 </span>
               </div>
@@ -258,7 +281,7 @@ export default function LoginPage() {
                   </div>
 
                   {/* Phone input with +91 prefix */}
-                  <div className="flex-1 flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+                  <div className="flex-1 flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
                     <span className="text-slate-800 font-bold text-sm mr-2 select-none">+91</span>
                     <input
                       type="tel"
@@ -273,7 +296,7 @@ export default function LoginPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+                <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
                   <Mail className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
                   <input
                     type="email"
@@ -289,7 +312,7 @@ export default function LoginPage() {
             {/* Password Field (when step is PASSWORD or already entered) */}
             {step === 'PASSWORD' && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+                <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
                   <Lock className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -312,7 +335,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setStep('IDENTIFIER')}
-                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-800"
+                    className="text-[11px] font-semibold text-slate-500 hover:text-emerald-700"
                   >
                     Change {inputMode === 'PHONE' ? 'phone' : 'email'}
                   </button>
@@ -327,7 +350,7 @@ export default function LoginPage() {
                 id="rememberMe"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded text-[#f04f5f] accent-[#f04f5f] focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 focus:ring-0 cursor-pointer"
               />
               <label
                 htmlFor="rememberMe"
@@ -341,12 +364,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 px-4 rounded-2xl bg-[#f04f5f] hover:bg-[#e03a4c] active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-md shadow-[#f04f5f]/30 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-950/30 hover:shadow-emerald-600/30 transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <span>Continue</span>
+                <span className="flex items-center gap-1.5">
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
+                </span>
               )}
             </button>
           </form>
@@ -360,9 +386,8 @@ export default function LoginPage() {
                 setError('Google Sign-In is active. You can sign in using your registered mobile number or email.');
               }}
               title="Sign in with Google"
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-xs transition active:scale-95 group"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group"
             >
-              {/* Google colored G logo SVG */}
               <svg className="w-5 h-5 group-hover:scale-105 transition" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -391,7 +416,7 @@ export default function LoginPage() {
                 setError(null);
               }}
               title={inputMode === 'PHONE' ? 'Switch to Email Login' : 'Switch to Phone Login'}
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-xs transition active:scale-95 group text-[#f04f5f]"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group text-emerald-600 hover:text-emerald-700"
             >
               <Mail className="w-5 h-5 group-hover:scale-105 transition" />
             </button>
@@ -402,7 +427,7 @@ export default function LoginPage() {
             <span className="text-slate-500">New landlord? </span>
             <Link
               href="/register"
-              className="font-bold text-[#f04f5f] hover:underline"
+              className="font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
             >
               Create Account Free
             </Link>

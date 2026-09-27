@@ -12,8 +12,9 @@ import {
   Eye,
   EyeOff,
   Building2,
-  CheckCircle2,
   Sparkles,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import { apiRequest, setAuthToken, setStoredUser } from '@/lib/api';
 
@@ -91,45 +92,68 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col justify-between font-sans selection:bg-[#f04f5f] selection:text-white">
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-between font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden">
+      {/* Top Header Bar with Home Navigation & Brand */}
+      <header className="w-full max-w-md mx-auto pt-4 px-5 flex items-center justify-between z-20">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 backdrop-blur-md"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Home</span>
+        </Link>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-950/60 border border-emerald-400/30">
+            <Building2 className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-black tracking-tight text-white">RentFlow</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
+              India
+            </span>
+          </div>
+        </div>
+      </header>
+
       {/* ========================================================================= */}
       {/* 1. Top Visual Hero Banner (Zomato/Blinkit High-Impact Graphic Style)       */}
       {/* ========================================================================= */}
-      <div className="relative w-full max-w-md mx-auto pt-8 pb-5 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
+      <div className="relative w-full max-w-md mx-auto pt-6 pb-5 px-6 overflow-hidden flex flex-col items-center justify-center text-center">
         {/* Ambient Glows */}
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-emerald-500/25 via-teal-500/15 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         {/* Big Bold Headline */}
         <div className="space-y-1 relative z-10">
           <h1 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
             Start Managing Rent
           </h1>
-          <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white leading-tight">
+          <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-emerald-400 leading-tight">
             In 60 Seconds
           </h2>
         </div>
 
         {/* Angled Tent Card Badge ("DIRECT UPI MODE") */}
         <div className="mt-5 mb-1 relative z-10 flex flex-col items-center">
-          <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/10 border-2 border-emerald-500/30 -rotate-3 hover:rotate-0 transition-transform duration-300 flex items-center gap-2">
+          <div className="bg-white text-slate-900 px-4 py-2 rounded-xl shadow-2xl shadow-emerald-500/20 border-2 border-emerald-500/40 -rotate-3 hover:rotate-0 transition-transform duration-300 flex items-center gap-2">
             <div className="w-5 h-5 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-[10px]">
               ₹
             </div>
             <div className="text-left">
               <span className="text-[11px] font-black uppercase tracking-wider block text-emerald-800 leading-none">
-                Direct UPI to Bank
+                100% Free Setup
               </span>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mt-0.5">
-                0% Gateway Fees
+                Zero Platform Commission
               </span>
             </div>
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-1" />
           </div>
 
           {/* Visual Carousel Indicator Dots */}
-          <div className="flex items-center gap-1.5 mt-3.5">
+          <div className="flex items-center gap-1.5 mt-4">
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-            <span className="w-4 h-1.5 rounded-full bg-white transition-all" />
+            <span className="w-4 h-1.5 rounded-full bg-emerald-400 transition-all shadow-xs shadow-emerald-400/50" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
             <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
@@ -149,7 +173,7 @@ export default function RegisterPage() {
               <span>Free Landlord Setup</span>
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Create Your Account
+              Create Landlord Account
             </h2>
             <p className="text-xs text-slate-500">
               Collect rent directly on UPI with instant WhatsApp receipts
@@ -167,7 +191,7 @@ export default function RegisterPage() {
           {/* Section B: Signup Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Full Name */}
-            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
               <User className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
               <input
                 type="text"
@@ -186,7 +210,7 @@ export default function RegisterPage() {
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
 
-              <div className="flex-1 flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+              <div className="flex-1 flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
                 <span className="text-slate-800 font-bold text-sm mr-2 select-none">+91</span>
                 <input
                   type="tel"
@@ -200,7 +224,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Email Address */}
-            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
               <Mail className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
               <input
                 type="email"
@@ -213,7 +237,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Password */}
-            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-slate-800 focus-within:ring-2 focus-within:ring-slate-100 bg-white transition shadow-2xs">
+            <div className="flex items-center px-4 py-3 rounded-2xl border border-slate-200 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 bg-white transition shadow-2xs">
               <Lock className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -240,7 +264,7 @@ export default function RegisterPage() {
                 id="rememberMeRegister"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded text-[#f04f5f] accent-[#f04f5f] focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 focus:ring-0 cursor-pointer"
               />
               <label
                 htmlFor="rememberMeRegister"
@@ -250,16 +274,19 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            {/* Primary Action Button ("Continue") */}
+            {/* Primary Action Button ("Create Free Account") */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 px-4 rounded-2xl bg-[#f04f5f] hover:bg-[#e03a4c] active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-md shadow-[#f04f5f]/30 transition flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+              className="w-full py-4 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-950/30 hover:shadow-emerald-600/30 transition flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
             >
               {loading ? (
                 <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <span>Continue</span>
+                <span className="flex items-center gap-1.5">
+                  <span>Create Free Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </span>
               )}
             </button>
           </form>
@@ -272,7 +299,7 @@ export default function RegisterPage() {
                 setError('Google Sign-Up is enabled. Fill in your details above for instant zero-fee account setup.');
               }}
               title="Sign up with Google"
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-xs transition active:scale-95 group"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group"
             >
               <svg className="w-5 h-5 group-hover:scale-105 transition" viewBox="0 0 24 24">
                 <path
@@ -297,18 +324,18 @@ export default function RegisterPage() {
             <Link
               href="/login"
               title="Sign In Instead"
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-xs transition active:scale-95 group text-[#f04f5f]"
+              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center shadow-2xs transition active:scale-95 group text-emerald-600 hover:text-emerald-700"
             >
               <Mail className="w-5 h-5 group-hover:scale-105 transition" />
             </Link>
           </div>
 
           {/* Reassurance note for Tenants */}
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-500 flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs text-slate-600 flex items-center justify-between">
             <span className="font-medium">Are you a tenant?</span>
             <Link
               href="/login"
-              className="font-bold text-[#f04f5f] hover:underline"
+              className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
             >
               Log in with Phone
             </Link>
@@ -319,7 +346,7 @@ export default function RegisterPage() {
             <span className="text-slate-500">Already have an account? </span>
             <Link
               href="/login"
-              className="font-bold text-[#f04f5f] hover:underline"
+              className="font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
             >
               Log in
             </Link>
